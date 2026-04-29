@@ -291,6 +291,43 @@
     border-top: 1px solid var(--ink);
     overflow-x: auto;
   }
+  .toggle-row {
+    margin-top: 24px;
+    display: flex;
+    justify-content: flex-end;
+  }
+  .toggle-button {
+    border: 1px solid var(--ink);
+    background: transparent;
+    color: var(--ink);
+    border-radius: 999px;
+    padding: 10px 16px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .2s, border-color .2s, color .2s;
+  }
+  .toggle-button:hover {
+    background: var(--bg-soft);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .clients-wrap {
+    margin-top: 18px;
+    border: 1px solid var(--line);
+    background: var(--bg-card);
+    border-radius: 10px;
+    padding: 18px;
+  }
+  .clients-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+  }
   table {
     width: 100%;
     border-collapse: collapse;
@@ -418,6 +455,30 @@
     </div>
 
     <div class="stats" id="stats"></div>
+
+    <div class="toggle-row">
+      <button id="toggleRatesBtn" class="toggle-button hidden" type="button">
+        Afficher les TJM/TMA des clients
+      </button>
+    </div>
+
+    <div class="clients-wrap hidden" id="clientsRatesPanel">
+      <div class="clients-header">
+        <strong>Clients</strong> · TJM / TMA
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Client</th>
+              <th class="right">TJM</th>
+              <th class="right">TMA</th>
+            </tr>
+          </thead>
+          <tbody id="clientsTable"></tbody>
+        </table>
+      </div>
+    </div>
 
     <div class="chart-wrap">
       <canvas id="caChart"></canvas>
@@ -561,13 +622,13 @@ function handleFile(file) {
     try {
       const data = new Uint8Array(e.target.result);
       const wb   = XLSX.read(data, { type: 'array' });
-      const weeks = parseWorkbook(wb);
+      const { weeks, clientRates } = parseWorkbook(wb);
       if (!weeks.length) {
         setStatus('Aucun onglet de semaine numéroté trouvé dans le fichier.', 'error');
         return;
       }
       setStatus(`${weeks.length} semaine(s) chargée(s) avec succès.`, 'success');
-      render(year, weeks, file.name);
+      render(year, weeks, clientRates, file.name);
     } catch (err) {
       console.error(err);
       setStatus('Impossible de lire le fichier : ' + err.message, 'error');
@@ -584,6 +645,10 @@ function handleFile(file) {
  *   - revenue  (Total row, column H → "Chiffre d'affaire")
  * Falls back to summing numeric values in column H if no Total row.
  */
+function isInternalClient(value) {
+  return normalizeKey(value).includes('interne');
+}
+
 function parseWorkbook(wb) {
   const yearsLookup = parseYearsLookup(wb);
   const out = [];
@@ -598,7 +663,12 @@ function parseWorkbook(wb) {
     out.push({ week: weekNum, duration, revenue, tjm, tma });
   }
   out.sort((a, b) => a.week - b.week);
-  return out;
+
+  const clientRates = Object.values(yearsLookup)
+    .filter(entry => entry && !isInternalClient(entry.activity) && entry.tjm && entry.tma)
+    .sort((a, b) => a.activity.localeCompare(b.activity, 'fr', { sensitivity: 'base' }));
+
+  return { weeks: out, clientRates };
 }
 
 function toNumber(v) {
@@ -742,8 +812,44 @@ function parseWeekSheet(rows, yearsLookup) {
    5.  Rendering
    ════════════════════════════════════════════════════════════════ */
 let chart = null;
+let currentClientRates = [];
+const toggleRatesBtn = document.getElementById('toggleRatesBtn');
+const clientsRatesPanel = document.getElementById('clientsRatesPanel');
+const clientsTable = document.getElementById('clientsTable');
 
-function render(year, weeks, fileName) {
+toggleRatesBtn.addEventListener('click', () => {
+  const isHidden = clientsRatesPanel.classList.toggle('hidden');
+  toggleRatesBtn.textContent = isHidden
+    ? 'Afficher les TJM/TMA des clients'
+    : 'Masquer les TJM/TMA des clients';
+});
+
+function updateClientRatesPanel(clientRates) {
+  currentClientRates = clientRates || [];
+  if (!currentClientRates.length) {
+    toggleRatesBtn.classList.add('hidden');
+    clientsRatesPanel.classList.add('hidden');
+    clientsTable.innerHTML = '';
+    return;
+  }
+
+  toggleRatesBtn.classList.remove('hidden');
+  toggleRatesBtn.textContent = 'Afficher les TJM/TMA des clients';
+  clientsRatesPanel.classList.add('hidden');
+  renderClientRates(currentClientRates);
+}
+
+function renderClientRates(clientRates) {
+  clientsTable.innerHTML = clientRates.map(rate => `
+    <tr>
+      <td>${rate.activity}</td>
+      <td class="right">${fmtCurrency(rate.tjm)}</td>
+      <td class="right">${rate.tma.toLocaleString('fr-FR', { maximumFractionDigits: 3 })}</td>
+    </tr>
+  `).join('');
+}
+
+function render(year, weeks, clientRates, fileName) {
   const enriched = weeks.map(w => {
     const { start, end } = getWeekDates(year, w.week);
     return { ...w, start, end };
@@ -794,6 +900,7 @@ function render(year, weeks, fileName) {
 
   // ── Meta ───────────────────────────────────────────────────
   document.getElementById('resultsMeta').textContent = `${fileName} · ${year}`;
+  updateClientRatesPanel(clientRates);
 
   // ── Table ──────────────────────────────────────────────────
   document.getElementById('weeksTable').innerHTML = enriched.map(w => `
