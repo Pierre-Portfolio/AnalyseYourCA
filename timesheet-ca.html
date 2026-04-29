@@ -27,6 +27,20 @@
     --good: #4a6b3a;
   }
 
+  body.dark {
+    --bg: #121318;
+    --bg-soft: #1d2330;
+    --bg-card: #252f43;
+    --ink: #f5f7fb;
+    --ink-muted: #d1d8e6;
+    --ink-faint: #98a4b8;
+    --accent: #7f9dff;
+    --accent-soft: #aab8ff;
+    --line: #3b4a65;
+    --line-soft: #2b3851;
+    --good: #7ecf93;
+  }
+
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   html, body {
@@ -66,6 +80,27 @@
     padding-bottom: 28px;
     margin-bottom: 56px;
     text-align: center;
+    position: relative;
+  }
+
+  .theme-toggle {
+    position: absolute;
+    top: 16px;
+    right: 0;
+    border: 1px solid var(--ink);
+    background: transparent;
+    color: var(--ink);
+    border-radius: 999px;
+    padding: 10px 16px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .2s, border-color .2s, color .2s;
+  }
+  .theme-toggle:hover {
+    background: var(--bg-soft);
+    border-color: var(--accent);
+    color: var(--accent);
   }
 
   h1 {
@@ -405,6 +440,7 @@
 <div class="container">
 
   <header>
+    <button id="themeToggleBtn" class="theme-toggle" type="button">Mode sombre</button>
     <h1>Suivi du <em>chiffre d'affaires</em></h1>
     <p class="lede">
       Déposez votre fichier de timesheet annuel pour visualiser l'évolution hebdomadaire du CA.
@@ -571,6 +607,7 @@ function updateYearHint() {
 }
 yearInput.addEventListener('input', updateYearHint);
 updateYearHint();
+loadTheme();
 
 /* ════════════════════════════════════════════════════════════════
    3.  Drag & drop
@@ -818,6 +855,29 @@ let currentClientRates = [];
 const toggleRatesBtn = document.getElementById('toggleRatesBtn');
 const clientsRatesPanel = document.getElementById('clientsRatesPanel');
 const clientsTable = document.getElementById('clientsTable');
+const themeToggleBtn = document.getElementById('themeToggleBtn');
+
+function applyTheme(theme) {
+  const isDark = theme === 'dark';
+  document.body.classList.toggle('dark', isDark);
+  themeToggleBtn.textContent = isDark ? 'Mode clair' : 'Mode sombre';
+  localStorage.setItem('preferredTheme', theme);
+}
+
+function loadTheme() {
+  const saved = localStorage.getItem('preferredTheme');
+  if (saved === 'dark' || saved === 'light') {
+    applyTheme(saved);
+    return;
+  }
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme(prefersDark ? 'dark' : 'light');
+}
+
+themeToggleBtn.addEventListener('click', () => {
+  const nextTheme = document.body.classList.contains('dark') ? 'light' : 'dark';
+  applyTheme(nextTheme);
+});
 
 toggleRatesBtn.addEventListener('click', () => {
   const isHidden = clientsRatesPanel.classList.toggle('hidden');
