@@ -493,12 +493,6 @@
 
     <div class="stats" id="stats"></div>
 
-    <div class="toggle-row">
-      <button id="toggleRatesBtn" class="toggle-button hidden" type="button">
-        Afficher les TJM/TMA des clients
-      </button>
-    </div>
-
     <div class="chart-wrap">
       <canvas id="caChart"></canvas>
     </div>
@@ -852,8 +846,6 @@ function parseWeekSheet(rows, yearsLookup) {
    ════════════════════════════════════════════════════════════════ */
 let chart = null;
 let currentClientRates = [];
-const toggleRatesBtn = document.getElementById('toggleRatesBtn');
-const clientsRatesPanel = document.getElementById('clientsRatesPanel');
 const clientsTable = document.getElementById('clientsTable');
 const clientRatesTable = document.getElementById('clientRatesTable');
 const clientRatesSection = document.getElementById('clientRatesSection');
@@ -872,9 +864,7 @@ function applyTheme(theme) {
 
 function loadTheme() {
   const saved = localStorage.getItem('preferredTheme');
-  const theme = (saved === 'dark' || saved === 'light')
-    ? saved
-    : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  const theme = saved === 'light' ? 'light' : 'dark';
   applyTheme(theme);
 }
 
@@ -887,18 +877,9 @@ if (themeToggleBtn) {
 
 loadTheme();
 
-toggleRatesBtn.addEventListener('click', () => {
-  const isHidden = clientsRatesPanel.classList.toggle('hidden');
-  toggleRatesBtn.textContent = isHidden
-    ? 'Afficher les TJM/TMA des clients'
-    : 'Masquer les TJM/TMA des clients';
-});
-
 function updateClientRatesPanel(clientRates) {
   currentClientRates = clientRates || [];
-  toggleRatesBtn.classList.toggle('hidden', !currentClientRates.length);
-  clientsRatesPanel.classList.add('hidden');
-  clientRatesSection.classList.remove('hidden');
+  clientRatesSection.classList.toggle('hidden', !currentClientRates.length);
   renderClientRates(currentClientRates);
 }
 
