@@ -497,6 +497,31 @@
       <canvas id="caChart"></canvas>
     </div>
 
+    <div class="chart-wrap" style="margin-top:16px">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.16em;font-weight:600;color:var(--ink-muted);margin-bottom:14px">
+        CA par mois
+      </div>
+      <canvas id="caMonthChart"></canvas>
+    </div>
+
+    <div class="chart-wrap" style="margin-top:16px">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.16em;font-weight:600;color:var(--ink-muted);margin-bottom:14px">
+        Jours passés en Régie — par mois et activité
+      </div>
+      <div id="regieChartWrap" style="position:relative">
+        <canvas id="regieChart"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-wrap" style="margin-top:16px">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.16em;font-weight:600;color:var(--ink-muted);margin-bottom:14px">
+        Jours passés en TMA — par mois et activité
+      </div>
+      <div id="tmaChartWrap" style="position:relative">
+        <canvas id="tmaChart"></canvas>
+      </div>
+    </div>
+
     <div class="table-wrap" style="margin-top:32px">
       <table>
         <thead>
@@ -751,10 +776,10 @@ function parseWorkbook(wb) {
     const sheet = wb.Sheets[name];
     const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null });
 
-    const { duration, revenue, tjm, tma } = parseWeekSheet(rows, yearsLookup);
+    const { duration, revenue, tjm, tma, activities } = parseWeekSheet(rows, yearsLookup);
     // N'ajouter que les semaines avec au moins un peu de contenu
     if (duration > 0 || revenue > 0) {
-      out.push({ week: weekNum, duration, revenue, tjm, tma });
+      out.push({ week: weekNum, duration, revenue, tjm, tma, activities });
     }
   }
   out.sort((a, b) => a.week - b.week);
@@ -863,6 +888,7 @@ function parseWeekSheet(rows, yearsLookup) {
   let revenue  = 0;
   let weightedTjm = 0, weightedTjmDays = 0;
   let weightedTma = 0, weightedTmaDays = 0;
+  const activities = []; // ← détail par activité pour les graphiques jours
 
   // Extrait la valeur numérique d'une cellule "TJM : 0,4375" ou "TMA : 925"
   function extractLabelled(cell) {
@@ -891,8 +917,16 @@ function parseWeekSheet(rows, yearsLookup) {
     // Ligne Total → arrêt
     if (typeof firstCell === 'string' && firstCell.trim().toLowerCase().startsWith('total')) break;
 
+    // ── Sauter les lignes d'en-tête ──────────────────────────
+    // Ligne 0 : "Collaborateur" en col 0  →  col 5 contient l'année (ex: 2026), pas une durée
+    // Ligne 1 : col 5 = "Durée (j)" (chaîne)
+    if (typeof firstCell === 'string' && normalizeKey(firstCell).includes('collabor')) continue;
+    if (typeof row[5] === 'string' && normalizeKey(row[5]).includes('dur')) continue;
+
     const activityRaw = row[1];
     if (!activityRaw || typeof activityRaw !== 'string') continue;
+    // Sauter la cellule d'en-tête "Activités" elle-même
+    if (normalizeKey(activityRaw).trim() === 'activites') continue;
     const activity = activityRaw.trim();
     if (!activity) continue;
 
@@ -936,6 +970,8 @@ function parseWeekSheet(rows, yearsLookup) {
       if (tmaDur > 0 && tmaRate > 0) { weightedTma += tmaRate * tmaDur; weightedTmaDays += tmaDur; }
       if (tjmDur > 0 && tjmRate > 0) { weightedTjm += tjmRate * tjmDur; weightedTjmDays += tjmDur; }
 
+      if (totalDur > 0) activities.push({ name: activity, tmaDur, tjmDur });
+
     } else if (label === null) {
       // ── Format numérique direct ────────────────────────────
       const rawDur = row[5];
@@ -961,6 +997,8 @@ function parseWeekSheet(rows, yearsLookup) {
       duration += rowDur;
       revenue  += rowCaRaw || (rowDur * rowTjm);
       if (rowDur > 0 && rowTjm > 0) { weightedTjm += rowTjm * rowDur; weightedTjmDays += rowDur; }
+      // N'inclure dans les graphiques que si c'est une activité facturable (TJM > 0)
+      if (rowDur > 0 && rowTjm > 0) activities.push({ name: activity, tmaDur: 0, tjmDur: rowDur });
     }
     // label === 'TJM' seul → déjà traité dans le cas TMA via nextRow
   }
@@ -969,7 +1007,8 @@ function parseWeekSheet(rows, yearsLookup) {
     duration,
     revenue,
     tjm: weightedTjmDays ? weightedTjm / weightedTjmDays : 0,
-    tma: weightedTmaDays ? weightedTma / weightedTmaDays : 0
+    tma: weightedTmaDays ? weightedTma / weightedTmaDays : 0,
+    activities
   };
 }
 
@@ -977,6 +1016,7 @@ function parseWeekSheet(rows, yearsLookup) {
    5.  Rendering
    ════════════════════════════════════════════════════════════════ */
 let chart = null;
+let chartMonth = null;
 let currentClientRates = [];
 const clientRatesTable = document.getElementById('clientRatesTable');
 const clientRatesSection = document.getElementById('clientRatesSection');
@@ -1158,6 +1198,9 @@ function render(year, weeks, clientRates, fileName) {
 
   // ── Chart ──────────────────────────────────────────────────
   drawChart(enriched);
+  drawMonthChart(year, enriched);
+  drawActivityDaysChart('regieChart', year, enriched, 'tjm');
+  drawActivityDaysChart('tmaChart',   year, enriched, 'tma');
 
   const results = document.getElementById('results');
   if (results) {
@@ -1256,6 +1299,271 @@ function hexToRgba(hex, a) {
   const g = parseInt(hex.slice(2, 4), 16);
   const b = parseInt(hex.slice(4, 6), 16);
   return `rgba(${r}, ${g}, ${b}, ${a})`;
+}
+
+let chartRegieDays = null;
+let chartTmaDays   = null;
+
+/**
+ * Graphique barres horizontales empilées : jours par mois et par activité.
+ * mode = 'tjm' → jours en Régie   |   mode = 'tma' → jours en TMA
+ */
+function drawActivityDaysChart(canvasId, year, weeks, mode) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  if (mode === 'tjm' && chartRegieDays) { chartRegieDays.destroy(); chartRegieDays = null; }
+  if (mode === 'tma' && chartTmaDays)   { chartTmaDays.destroy();   chartTmaDays   = null; }
+
+  const MONTHS_SHORT = ['Janv.','Févr.','Mars','Avr.','Mai','Juin',
+                        'Juil.','Août','Sept.','Oct.','Nov.','Déc.'];
+  const PALETTE = [
+    '#5b8df6','#f5a623','#50c9a0','#e06c6c','#c78fff',
+    '#4ecdc4','#f78fb3','#45aaf2','#fc5c65','#26de81',
+    '#fd9644','#a55eea','#2bcbba','#ff6b6b','#ffd32a',
+    '#0be881','#3c40c4','#ef5777','#0fbcf9','#ffd428'
+  ];
+
+  // 1. Activités ayant des jours dans ce mode
+  const activitySet = new Set();
+  for (const w of weeks) {
+    for (const a of (w.activities || [])) {
+      const days = mode === 'tjm' ? a.tjmDur : a.tmaDur;
+      if (days > 0) activitySet.add(a.name);
+    }
+  }
+  const allActivities = [...activitySet].sort((a, b) =>
+    a.localeCompare(b, 'fr', { sensitivity: 'base' })
+  );
+  if (!allActivities.length) return;
+
+  // 2. Agréger par mois
+  const monthSet  = new Set();
+  const monthData = {};
+  for (const w of weeks) {
+    const m = w.start.getMonth();
+    monthSet.add(m);
+    if (!monthData[m]) monthData[m] = {};
+    for (const a of (w.activities || [])) {
+      const days = mode === 'tjm' ? a.tjmDur : a.tmaDur;
+      if (days > 0) monthData[m][a.name] = (monthData[m][a.name] || 0) + days;
+    }
+  }
+  const sortedMonths = [...monthSet].sort((a, b) => a - b);
+  const labels = sortedMonths.map(m => `${MONTHS_SHORT[m]} ${year}`);
+
+  // 3. Datasets (un par activité)
+  const datasets = allActivities.map((act, i) => ({
+    label: act,
+    data: sortedMonths.map(m => {
+      const v = (monthData[m] || {})[act] || 0;
+      return v > 0 ? parseFloat(v.toFixed(4)) : 0;
+    }),
+    backgroundColor: PALETTE[i % PALETTE.length],
+    // Pas de borderRadius sur des barres empilées : bug de rendu Chart.js 4
+    // quand des segments à 0 sont adjacents à des segments colorés
+    borderWidth: 0,
+  }));
+
+  // 4. Hauteur fixe sur le wrapper, pas sur le canvas
+  const wrapperId = mode === 'tjm' ? 'regieChartWrap' : 'tmaChartWrap';
+  const wrapper = document.getElementById(wrapperId);
+  const fixedH = Math.max(72, 64 * sortedMonths.length);
+  if (wrapper) wrapper.style.height = fixedH + 'px';
+
+  const cs    = getComputedStyle(document.documentElement);
+  const ink   = cs.getPropertyValue('--ink').trim();
+  const muted = cs.getPropertyValue('--ink-muted').trim();
+  const line  = cs.getPropertyValue('--line').trim();
+
+  const instance = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          display: true,
+          position: 'bottom',
+          labels: {
+            color: muted,
+            font: { family: 'Inter', size: 11 },
+            boxWidth: 12,
+            padding: 12,
+            filter: item => datasets[item.datasetIndex]?.data.some(v => v > 0)
+          }
+        },
+        tooltip: {
+          backgroundColor: ink,
+          titleColor: '#f0ebdd',
+          bodyColor: '#f0ebdd',
+          padding: 12,
+          titleFont: { family: 'Fraunces', size: 13, weight: '500' },
+          bodyFont:  { family: 'Inter', size: 12 },
+          callbacks: {
+            label: item => {
+              const v = item.parsed.x;
+              if (!v) return null;
+              return ` ${item.dataset.label} : ${v.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} j`;
+            }
+          },
+          filter: item => item.parsed.x > 0
+        }
+      },
+      scales: {
+        x: {
+          stacked: true,
+          beginAtZero: true,
+          grid: { color: line, drawBorder: false },
+          ticks: {
+            color: muted,
+            font: { family: 'Inter', size: 11 },
+            callback: v => v.toLocaleString('fr-FR', { maximumFractionDigits: 1 })
+          }
+        },
+        y: {
+          stacked: true,
+          grid: { display: false, drawBorder: false },
+          ticks: { color: muted, font: { family: 'Inter', size: 12 } }
+        }
+      },
+      animation: { duration: 700, easing: 'easeOutQuart' }
+    },
+    plugins: [{
+      id: 'rowTotals',
+      afterDatasetsDraw(chart) {
+        const { ctx: c, data } = chart;
+        c.save();
+        const lastMeta = chart.getDatasetMeta(data.datasets.length - 1);
+        lastMeta.data.forEach((bar, i) => {
+          const total = data.datasets.reduce((s, ds) => s + (ds.data[i] || 0), 0);
+          if (!total) return;
+          c.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--ink').trim();
+          c.font = '600 11px Inter, sans-serif';
+          c.textAlign  = 'left';
+          c.textBaseline = 'middle';
+          c.fillText(
+            total.toLocaleString('fr-FR', { maximumFractionDigits: 2 }),
+            bar.x + 6, bar.y
+          );
+        });
+        c.restore();
+      }
+    }]
+  });
+
+  if (mode === 'tjm') chartRegieDays = instance;
+  else chartTmaDays = instance;
+}
+
+function drawMonthChart(year, weeks) {
+  const ctx = document.getElementById('caMonthChart').getContext('2d');
+  if (chartMonth) chartMonth.destroy();
+
+  // Agréger par mois
+  const monthTotals = {};
+  for (const w of weeks) {
+    // Utilise la date de début de semaine pour déterminer le mois
+    const m = w.start.getMonth(); // 0-11
+    monthTotals[m] = (monthTotals[m] || 0) + w.revenue;
+  }
+
+  const MONTHS_FULL = ['Janv.','Févr.','Mars','Avr.','Mai','Juin',
+                       'Juil.','Août','Sept.','Oct.','Nov.','Déc.'];
+
+  // Palette colorée comme l'exemple (12 couleurs distinctes)
+  const PALETTE = [
+    '#5b8df6','#f5a623','#50c9a0','#e06c6c','#c78fff',
+    '#4ecdc4','#f78fb3','#45aaf2','#fc5c65','#26de81',
+    '#fd9644','#a55eea'
+  ];
+
+  const sortedMonths = Object.keys(monthTotals).map(Number).sort((a, b) => a - b);
+  const labels = sortedMonths.map(m => `${MONTHS_FULL[m]} ${year}`);
+  const data   = sortedMonths.map(m => monthTotals[m]);
+  const colors = sortedMonths.map(m => PALETTE[m % PALETTE.length]);
+
+  const cs    = getComputedStyle(document.documentElement);
+  const ink   = cs.getPropertyValue('--ink').trim();
+  const muted = cs.getPropertyValue('--ink-muted').trim();
+  const line  = cs.getPropertyValue('--line').trim();
+
+  chartMonth = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: "CA mensuel",
+        data,
+        backgroundColor: colors,
+        borderRadius: 4,
+        borderSkipped: false,
+        barPercentage: 0.62,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: ink,
+          titleColor: '#f0ebdd',
+          bodyColor: '#f0ebdd',
+          padding: 12,
+          titleFont: { family: 'Fraunces', size: 14, weight: '500' },
+          bodyFont:  { family: 'Inter', size: 13 },
+          displayColors: false,
+          callbacks: {
+            title: items => labels[items[0].dataIndex],
+            label: item => '  ' + fmtCurrency(item.parsed.y)
+          }
+        },
+        // Affiche la valeur au-dessus de chaque barre
+        datalabels: false
+      },
+      scales: {
+        x: {
+          grid: { display: false, drawBorder: false },
+          ticks: { color: muted, font: { family: 'Inter', size: 12 } }
+        },
+        y: {
+          beginAtZero: true,
+          grid: { color: line, drawBorder: false },
+          ticks: {
+            color: muted,
+            font: { family: 'Inter', size: 12 },
+            callback: v => v === 0 ? '0' : fmtCurrency(v)
+          }
+        }
+      },
+      animation: { duration: 700, easing: 'easeOutQuart' }
+    },
+    plugins: [{
+      // Plugin inline : affiche le montant au-dessus de chaque barre
+      id: 'topLabels',
+      afterDatasetsDraw(chart) {
+        const { ctx, data } = chart;
+        ctx.save();
+        chart.getDatasetMeta(0).data.forEach((bar, i) => {
+          const value = data.datasets[0].data[i];
+          if (!value) return;
+          const label = fmtCurrency(value);
+          ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--ink').trim();
+          ctx.font = '600 12px Inter, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'bottom';
+          ctx.fillText(label, bar.x, bar.y - 4);
+        });
+        ctx.restore();
+      }
+    }]
+  });
 }
 </script>
 
