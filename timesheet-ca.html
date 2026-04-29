@@ -106,17 +106,12 @@
   h1 {
     font-family: 'Fraunces', serif;
     font-weight: 400;
-    font-size: clamp(40px, 6vw, 72px);
+    font-size: clamp(32px, 5vw, 56px);
     line-height: 0.98;
     letter-spacing: -0.02em;
     margin: 0 auto 16px;
     max-width: 14ch;
     font-variation-settings: "opsz" 144;
-  }
-  h1 em {
-    font-style: italic;
-    font-weight: 300;
-    color: var(--accent);
   }
 
   .lede {
@@ -124,7 +119,10 @@
     font-size: 19px;
     line-height: 1.5;
     color: var(--ink-muted);
-    max-width: 56ch;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
     font-weight: 300;
   }
 
@@ -441,7 +439,7 @@
 
   <header>
     <button id="themeToggleBtn" class="theme-toggle" type="button" aria-label="Basculer en mode sombre">🌙</button>
-    <h1>Suivi du <em>chiffre d'affaires</em></h1>
+    <h1>Suivi du chiffre d'affaires</h1>
     <p class="lede">
       Déposez votre fichier de timesheet annuel pour visualiser l'évolution hebdomadaire du CA.
     </p>
@@ -535,6 +533,26 @@
           </tr>
         </thead>
         <tbody id="weeksTable"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="clientRatesSection" class="hidden">
+    <div class="section-label">
+      <span class="num">iv.</span>
+      <span class="name">Clients</span>
+      <span class="meta">TJM / TMA depuis l'onglet Years</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Client</th>
+            <th class="right">TJM</th>
+            <th class="right">TMA</th>
+          </tr>
+        </thead>
+        <tbody id="clientRatesTable"></tbody>
       </table>
     </div>
   </section>
@@ -854,13 +872,15 @@ let currentClientRates = [];
 const toggleRatesBtn = document.getElementById('toggleRatesBtn');
 const clientsRatesPanel = document.getElementById('clientsRatesPanel');
 const clientsTable = document.getElementById('clientsTable');
+const clientRatesTable = document.getElementById('clientRatesTable');
+const clientRatesSection = document.getElementById('clientRatesSection');
 const themeToggleBtn = document.getElementById('themeToggleBtn');
 
 function applyTheme(theme) {
   const isDark = theme === 'dark';
   document.body.classList.toggle('dark', isDark);
   if (themeToggleBtn) {
-    themeToggleBtn.textContent = isDark ? '☀️' : '🌙';
+    themeToggleBtn.textContent = isDark ? '☀️' : '★';
     themeToggleBtn.setAttribute('aria-label', isDark ? 'Basculer en mode clair' : 'Basculer en mode sombre');
     themeToggleBtn.title = isDark ? 'Mode clair' : 'Mode sombre';
   }
@@ -896,24 +916,30 @@ function updateClientRatesPanel(clientRates) {
   if (!currentClientRates.length) {
     toggleRatesBtn.classList.add('hidden');
     clientsRatesPanel.classList.add('hidden');
+    clientRatesSection.classList.add('hidden');
     clientsTable.innerHTML = '';
+    if (clientRatesTable) clientRatesTable.innerHTML = '';
     return;
   }
 
   toggleRatesBtn.classList.remove('hidden');
   toggleRatesBtn.textContent = 'Afficher les TJM/TMA des clients';
   clientsRatesPanel.classList.add('hidden');
+  clientRatesSection.classList.remove('hidden');
   renderClientRates(currentClientRates);
 }
 
 function renderClientRates(clientRates) {
-  clientsTable.innerHTML = clientRates.map(rate => `
+  const rows = clientRates.map(rate => `
     <tr>
       <td>${rate.activity}</td>
       <td class="right">${fmtCurrency(rate.tjm)}</td>
       <td class="right">${rate.tma.toLocaleString('fr-FR', { maximumFractionDigits: 3 })}</td>
     </tr>
   `).join('');
+
+  clientsTable.innerHTML = rows;
+  if (clientRatesTable) clientRatesTable.innerHTML = rows;
 }
 
 function render(year, weeks, clientRates, fileName) {
