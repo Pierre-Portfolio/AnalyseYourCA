@@ -879,7 +879,9 @@ loadTheme();
 
 function updateClientRatesPanel(clientRates) {
   currentClientRates = clientRates || [];
-  clientRatesSection.classList.toggle('hidden', !currentClientRates.length);
+  if (clientRatesSection) {
+    clientRatesSection.classList.toggle('hidden', !currentClientRates.length);
+  }
   renderClientRates(currentClientRates);
 }
 
@@ -976,12 +978,14 @@ function render(year, weeks, clientRates, fileName) {
   drawChart(enriched);
 
   const results = document.getElementById('results');
-  results.classList.remove('hidden');
-  results.classList.remove('reveal');
-  // Restart animation
-  void results.offsetWidth;
-  results.classList.add('reveal');
-  results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  if (results) {
+    results.classList.remove('hidden');
+    results.classList.remove('reveal');
+    // Restart animation
+    void results.offsetWidth;
+    results.classList.add('reveal');
+    results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 }
 
 function drawChart(weeks) {
