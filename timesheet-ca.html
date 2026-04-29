@@ -846,7 +846,6 @@ function parseWeekSheet(rows, yearsLookup) {
    ════════════════════════════════════════════════════════════════ */
 let chart = null;
 let currentClientRates = [];
-const clientsTable = document.getElementById('clientsTable');
 const clientRatesTable = document.getElementById('clientRatesTable');
 const clientRatesSection = document.getElementById('clientRatesSection');
 const themeToggleBtn = document.getElementById('themeToggleBtn');
@@ -892,7 +891,6 @@ function renderClientRates(clientRates) {
         <td colspan="3" class="right">Aucun TJM/TMA client trouvé dans l'onglet Years.</td>
       </tr>
     `;
-    clientsTable.innerHTML = emptyRow;
     if (clientRatesTable) clientRatesTable.innerHTML = emptyRow;
     return;
   }
@@ -905,7 +903,6 @@ function renderClientRates(clientRates) {
     </tr>
   `).join('');
 
-  clientsTable.innerHTML = rows;
   if (clientRatesTable) clientRatesTable.innerHTML = rows;
 }
 
