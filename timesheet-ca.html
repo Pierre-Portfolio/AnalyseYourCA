@@ -538,6 +538,36 @@
     </div>
   </section>
 
+  <!-- ─── Diagnostic Years ──────────────────────────────────── -->
+  <section id="diagSection" class="hidden" style="margin-top: 40px;">
+    <div class="section-label">
+      <span class="num">v.</span>
+      <span class="name">Diagnostic — Onglet Years</span>
+      <span class="meta" id="diagMeta"></span>
+    </div>
+
+    <div class="clients-wrap" style="margin-bottom:24px">
+      <div class="clients-header">
+        Onglets détectés dans le fichier
+      </div>
+      <div id="diagSheets" style="font-family:'Inter',sans-serif;font-size:13px;color:var(--ink-muted);line-height:2;"></div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Activité (clé normalisée)</th>
+            <th class="right">TJM brut</th>
+            <th class="right">TMA brut</th>
+            <th class="right">Utilisé ?</th>
+          </tr>
+        </thead>
+        <tbody id="diagTable"></tbody>
+      </table>
+    </div>
+  </section>
+
 </div>
 
 <script>
@@ -655,9 +685,10 @@ function handleFile(file) {
     try {
       const data = new Uint8Array(e.target.result);
       const wb   = XLSX.read(data, { type: 'array' });
-      const { weeks, clientRates } = parseWorkbook(wb);
+      const { weeks, clientRates, yearsLookup, sheetNames } = parseWorkbook(wb);
+      renderDiag(yearsLookup, sheetNames);
       if (!weeks.length) {
-        setStatus('Aucun onglet de semaine numéroté trouvé dans le fichier.', 'error');
+        setStatus('Aucun onglet de semaine avec données trouvé. Voir diagnostic ci-dessous.', 'error');
         return;
       }
       setStatus(`${weeks.length} semaine(s) chargée(s) avec succès.`, 'success');
@@ -682,18 +713,49 @@ function isInternalClient(value) {
   return normalizeKey(value).includes('interne');
 }
 
+function resolveWeekNumber(name, sheetIndex, nonYearsIndex) {
+  const trimmed = name.trim();
+
+  // Cas 1 : nom purement numérique  "1", "2", "08" …
+  if (/^\d+$/.test(trimmed)) return parseInt(trimmed, 10);
+
+  // Cas 2 : préfixes courants  "S1", "Sem1", "Semaine 1", "Week 3", "W03" …
+  const prefixed = trimmed.match(/^(?:s(?:em(?:aine)?)?\.?\s*|w(?:eek)?\.?\s*)(\d+)$/i);
+  if (prefixed) return parseInt(prefixed[1], 10);
+
+  // Cas 3 : nom vide ou ne contient aucun chiffre → position dans le classeur
+  // (on utilise nonYearsIndex : 0-based parmi les onglets non-Years)
+  if (trimmed === '' || !/\d/.test(trimmed)) return nonYearsIndex + 1;
+
+  // Cas 4 : nom mixte avec chiffres finaux  "Sheet2", "Feuil5" …
+  const trailing = trimmed.match(/(\d+)$/);
+  if (trailing) return parseInt(trailing[1], 10);
+
+  // Dernier recours : position
+  return nonYearsIndex + 1;
+}
+
 function parseWorkbook(wb) {
   const yearsLookup = parseYearsLookup(wb);
   const out = [];
+  let nonYearsIndex = 0;
 
-  for (const name of wb.SheetNames) {
-    if (!/^\d+$/.test(name.trim())) continue; // skip "Years" etc.
-    const weekNum = parseInt(name.trim(), 10);
+  for (let si = 0; si < wb.SheetNames.length; si++) {
+    const name = wb.SheetNames[si];
+    // Ignorer uniquement l'onglet Years (insensible à la casse)
+    if (/^years$/i.test(name.trim())) continue;
+
+    const weekNum = resolveWeekNumber(name, si, nonYearsIndex);
+    nonYearsIndex++;
+
     const sheet = wb.Sheets[name];
     const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null });
 
     const { duration, revenue, tjm, tma } = parseWeekSheet(rows, yearsLookup);
-    out.push({ week: weekNum, duration, revenue, tjm, tma });
+    // N'ajouter que les semaines avec au moins un peu de contenu
+    if (duration > 0 || revenue > 0) {
+      out.push({ week: weekNum, duration, revenue, tjm, tma });
+    }
   }
   out.sort((a, b) => a.week - b.week);
 
@@ -701,7 +763,14 @@ function parseWorkbook(wb) {
     .filter(entry => entry && !isInternalClient(entry.activity) && entry.tjm && entry.tma)
     .sort((a, b) => a.activity.localeCompare(b.activity, 'fr', { sensitivity: 'base' }));
 
-  return { weeks: out, clientRates };
+  const sheetNames = wb.SheetNames.map((n, i) => ({
+    raw: n,
+    repr: n === '' ? '(vide)' : JSON.stringify(n),
+    isYears: /^years$/i.test(n.trim()),
+    index: i
+  }));
+
+  return { weeks: out, clientRates, yearsLookup, sheetNames };
 }
 
 function toNumber(v) {
@@ -726,111 +795,174 @@ function parseYearsLookup(wb) {
   if (!yearsName) return {};
 
   const rows = XLSX.utils.sheet_to_json(wb.Sheets[yearsName], { header: 1, defval: null });
-  const headerRowIndex = rows.findIndex(r =>
-    Array.isArray(r) && r.some(c => typeof c === 'string' && normalizeKey(c).includes('activ'))
-  );
-  const header = headerRowIndex >= 0 ? rows[headerRowIndex] : rows[0] || [];
-
-  const activityCol = header.findIndex(c => typeof c === 'string' && normalizeKey(c).includes('activ'));
-  const tjmCol = header.findIndex(c => typeof c === 'string' && normalizeKey(c).includes('tjm'));
-  const tmaCol = header.findIndex(c => typeof c === 'string' && normalizeKey(c).includes('tma'));
-  if (activityCol === -1) return {};
-
   const lookup = {};
-  for (let i = (headerRowIndex >= 0 ? headerRowIndex + 1 : 1); i < rows.length; i++) {
+
+  // Extrait la valeur numérique d'une cellule de type "TJM : 925" ou "TMA : 6 417"
+  // Le \xa0 est l'espace insécable utilisé comme séparateur de milliers
+  function extractLabelledRate(cell) {
+    if (cell == null) return 0;
+    const s = String(cell).replace(/\u00a0/g, '').trim();
+    const m = s.match(/^(?:TJM|TMA)\s*:\s*([\d\s,\.]+)$/i);
+    if (!m) return 0;
+    return toNumber(m[1]);
+  }
+
+  // Retourne 'TMA', 'TJM' ou null selon le contenu des colonnes 5-7
+  function rowLabelType(row) {
+    for (const c of [5, 6, 7]) {
+      if (!row[c]) continue;
+      const s = String(row[c]).trim();
+      if (/^TMA\s*:/i.test(s)) return 'TMA';
+      if (/^TJM\s*:/i.test(s)) return 'TJM';
+    }
+    return null;
+  }
+
+  for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
-    if (!row || !row[activityCol]) continue;
-    const activity = String(row[activityCol]).trim();
+    if (!row) continue;
+
+    const activityRaw = row[1];
+    if (!activityRaw || typeof activityRaw !== 'string') continue;
+    const activity = activityRaw.trim();
     if (!activity) continue;
 
-    const key = normalizeKey(activity);
-    const tjm = toNumber(tjmCol >= 0 ? row[tjmCol] : null);
-    const tma = toNumber(tmaCol >= 0 ? row[tmaCol] : null);
+    const label = rowLabelType(row);
 
-    if (tjm || tma) lookup[key] = { activity, tjm, tma };
+    if (label === 'TMA') {
+      // Format Support :  ligne N   = "TMA : dur" / "TMA : taux" / "TMA : ca"
+      //                   ligne N+1 = "TJM : dur" / "TJM : taux" / "TJM : ca"
+      // Le TAUX est toujours en colonne 6
+      const tmaRate = extractLabelledRate(row[6]);
+      let tjmRate = 0;
+      const nextRow = rows[i + 1];
+      if (nextRow && rowLabelType(nextRow) === 'TJM') {
+        tjmRate = extractLabelledRate(nextRow[6]);
+      }
+      if (tmaRate > 0 || tjmRate > 0) {
+        lookup[normalizeKey(activity)] = { activity, tjm: tjmRate, tma: tmaRate };
+      }
+
+    } else if (label === null) {
+      // Format numérique direct : col5 = durée (nombre), col6 = TJM (nombre), col7 = CA
+      const rawTjm = row[6];
+      const tjm = toNumber(rawTjm);
+      if (tjm > 0) {
+        lookup[normalizeKey(activity)] = { activity, tjm, tma: 0 };
+      }
+    }
+    // label === 'TJM' seul : ligne orpheline (TJM sans TMA précédent), ignorée ici
+    // car elle a déjà été traitée dans le cas TMA ci-dessus via nextRow
   }
+
   return lookup;
 }
 
 function parseWeekSheet(rows, yearsLookup) {
   let duration = 0;
-  let revenue = 0;
-  let weightedTjm = 0;
-  let weightedTma = 0;
-  let weightedTjmDays = 0;
-  let weightedTmaDays = 0;
+  let revenue  = 0;
+  let weightedTjm = 0, weightedTjmDays = 0;
+  let weightedTma = 0, weightedTmaDays = 0;
 
-  const headerIndex = rows.findIndex(r =>
-    Array.isArray(r) && r.some(c => typeof c === 'string' && normalizeKey(c).includes('activ'))
-  );
-  const header = headerIndex >= 0 ? rows[headerIndex] : [];
-
-  const activityCol = header.findIndex(c => typeof c === 'string' && normalizeKey(c).includes('activ'));
-  const durationCol = header.findIndex(c => typeof c === 'string' && normalizeKey(c).includes('dur'));
-  const revenueCol = header.findIndex(c =>
-    typeof c === 'string' && (normalizeKey(c).includes('chiffre') || normalizeKey(c).includes('ca'))
-  );
-  const tjmCol = header.findIndex(c => typeof c === 'string' && normalizeKey(c).includes('tjm'));
-  const tmaCol = header.findIndex(c => typeof c === 'string' && normalizeKey(c).includes('tma'));
-
-  if (activityCol < 0 || durationCol < 0) {
-    let found = false;
-    for (let i = rows.length - 1; i >= 0; i--) {
-      const r = rows[i];
-      if (r && typeof r[0] === 'string' && r[0].trim().toLowerCase() === 'total') {
-        duration = toNumber(r[5]);
-        revenue = toNumber(r[7]);
-        found = true;
-        break;
-      }
-    }
-    if (!found) {
-      for (const r of rows.slice(2)) {
-        if (!r) continue;
-        const v = r[7];
-        if (typeof v === 'number') revenue += v;
-        const d = r[5];
-        if (typeof d === 'number') duration += d;
-      }
-    }
-    return { duration, revenue, tjm: 0, tma: 0 };
+  // Extrait la valeur numérique d'une cellule "TJM : 0,4375" ou "TMA : 925"
+  function extractLabelled(cell) {
+    if (cell == null) return null;
+    const s = String(cell).replace(/\u00a0/g, '').trim();
+    const m = s.match(/^(?:TJM|TMA)\s*:\s*([\d\s,\.]+)$/i);
+    if (!m) return null;
+    return toNumber(m[1]);
   }
 
-  const startRow = headerIndex >= 0 ? headerIndex + 1 : 0;
-  for (let i = startRow; i < rows.length; i++) {
+  function rowLabelType(row) {
+    for (const c of [5, 6, 7]) {
+      if (!row || !row[c]) continue;
+      const s = String(row[c]).trim();
+      if (/^TMA\s*:/i.test(s)) return 'TMA';
+      if (/^TJM\s*:/i.test(s)) return 'TJM';
+    }
+    return null;
+  }
+
+  for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     if (!row) continue;
+
     const firstCell = row[0];
+    // Ligne Total → arrêt
     if (typeof firstCell === 'string' && firstCell.trim().toLowerCase().startsWith('total')) break;
 
-    const activity = String(row[activityCol] ?? '').trim();
+    const activityRaw = row[1];
+    if (!activityRaw || typeof activityRaw !== 'string') continue;
+    const activity = activityRaw.trim();
     if (!activity) continue;
 
-    const rowDuration = toNumber(row[durationCol]);
-    const rowRevenue = toNumber(revenueCol >= 0 ? row[revenueCol] : null);
-    let rowTjm = toNumber(tjmCol >= 0 ? row[tjmCol] : null);
-    let rowTma = toNumber(tmaCol >= 0 ? row[tmaCol] : null);
+    const label = rowLabelType(row);
 
-    const lookup = yearsLookup[normalizeKey(activity)];
-    if (lookup) {
-      if (lookup.tjm) rowTjm = lookup.tjm;
-      if (lookup.tma) rowTma = lookup.tma;
+    if (label === 'TMA') {
+      // ── Format "TMA : dur" / "TMA : taux" / "TMA : ca" ──────
+      const tmaDur = extractLabelled(row[5]) ?? 0;
+      const tmaRateRaw = extractLabelled(row[6]) ?? 0;
+      const tmaCa  = extractLabelled(row[7]) ?? 0;
+
+      // Ligne suivante : TJM
+      let tjmDur = 0, tjmRateRaw = 0, tjmCa = 0;
+      const nextRow = rows[i + 1];
+      if (nextRow && rowLabelType(nextRow) === 'TJM') {
+        tjmDur     = extractLabelled(nextRow[5]) ?? 0;
+        tjmRateRaw = extractLabelled(nextRow[6]) ?? 0;
+        tjmCa      = extractLabelled(nextRow[7]) ?? 0;
+      }
+
+      // Cherche les taux dans le Years lookup (correction du CSV corrompu)
+      const lookupKey = normalizeKey(activity);
+      let lookup = yearsLookup[lookupKey];
+      if (!lookup) {
+        // Fuzzy : inclusion partielle
+        const match = Object.keys(yearsLookup).find(k => k && (lookupKey.includes(k) || k.includes(lookupKey)));
+        if (match) lookup = yearsLookup[match];
+      }
+
+      const tmaRate = (tmaRateRaw > 0 ? tmaRateRaw : (lookup?.tma ?? 0));
+      const tjmRate = (tjmRateRaw > 0 ? tjmRateRaw : (lookup?.tjm ?? 0));
+
+      // Durée totale de l'activité cette semaine
+      const totalDur = tmaDur + tjmDur;
+      duration += totalDur;
+
+      // CA : utilise la valeur de la feuille si non-nulle, sinon recalcule
+      const actCa = (tmaCa + tjmCa) || (tmaDur * tmaRate + tjmDur * tjmRate);
+      revenue += actCa;
+
+      if (tmaDur > 0 && tmaRate > 0) { weightedTma += tmaRate * tmaDur; weightedTmaDays += tmaDur; }
+      if (tjmDur > 0 && tjmRate > 0) { weightedTjm += tjmRate * tjmDur; weightedTjmDays += tjmDur; }
+
+    } else if (label === null) {
+      // ── Format numérique direct ────────────────────────────
+      const rawDur = row[5];
+      const rawTjm = row[6];
+      const rawCa  = row[7];
+      if (rawDur == null && rawTjm == null) continue;
+
+      const rowDur  = toNumber(rawDur);
+      const rowCaRaw = toNumber(rawCa);
+
+      let rowTjm = toNumber(rawTjm);
+      // Cherche Years lookup si TJM = 0
+      if (!rowTjm) {
+        const lookupKey = normalizeKey(activity);
+        let lookup = yearsLookup[lookupKey];
+        if (!lookup) {
+          const match = Object.keys(yearsLookup).find(k => k && (lookupKey.includes(k) || k.includes(lookupKey)));
+          if (match) lookup = yearsLookup[match];
+        }
+        if (lookup?.tjm) rowTjm = lookup.tjm;
+      }
+
+      duration += rowDur;
+      revenue  += rowCaRaw || (rowDur * rowTjm);
+      if (rowDur > 0 && rowTjm > 0) { weightedTjm += rowTjm * rowDur; weightedTjmDays += rowDur; }
     }
-
-    const computedRevenue = rowDuration * rowTjm;
-    const finalRevenue = rowRevenue || computedRevenue;
-
-    duration += rowDuration;
-    revenue += finalRevenue;
-
-    if (rowDuration && rowTjm) {
-      weightedTjm += rowTjm * rowDuration;
-      weightedTjmDays += rowDuration;
-    }
-    if (rowDuration && rowTma) {
-      weightedTma += rowTma * rowDuration;
-      weightedTmaDays += rowDuration;
-    }
+    // label === 'TJM' seul → déjà traité dans le cas TMA via nextRow
   }
 
   return {
@@ -849,6 +981,59 @@ let currentClientRates = [];
 const clientRatesTable = document.getElementById('clientRatesTable');
 const clientRatesSection = document.getElementById('clientRatesSection');
 const themeToggleBtn = document.getElementById('themeToggleBtn');
+
+/* ─── Diagnostic Years ───────────────────────────────────────── */
+function renderDiag(yearsLookup, sheetNames) {
+  const diagSection = document.getElementById('diagSection');
+  const diagMeta    = document.getElementById('diagMeta');
+  const diagSheets  = document.getElementById('diagSheets');
+  const diagTable   = document.getElementById('diagTable');
+  if (!diagSection) return;
+
+  diagSection.classList.remove('hidden');
+
+  // ── Liste des onglets ────────────────────────────────────────
+  const totalSheets = sheetNames.length;
+  diagMeta.textContent = `${totalSheets} onglet(s) dans le fichier`;
+  diagSheets.innerHTML = sheetNames.map(s => {
+    const badge = s.isYears
+      ? `<span style="color:var(--accent);font-weight:600">[Years]</span>`
+      : `<span style="color:var(--good);font-weight:600">[semaine]</span>`;
+    return `${badge} index&nbsp;${s.index} → nom brut&nbsp;: <code style="background:var(--bg-soft);padding:1px 6px;border-radius:3px">${s.repr}</code>`;
+  }).join('<br>');
+
+  // ── Table activités ──────────────────────────────────────────
+  // Filtre : TJM != 0 OU TMA != 0
+  const entries = Object.values(yearsLookup)
+    .filter(e => e && (e.tjm !== 0 || e.tma !== 0))
+    .sort((a, b) => a.activity.localeCompare(b.activity, 'fr', { sensitivity: 'base' }));
+
+  if (!entries.length) {
+    diagTable.innerHTML = `
+      <tr><td colspan="4" style="color:var(--accent);font-style:italic;padding:16px">
+        Aucune activité avec TJM ou TMA non-nul trouvée dans l'onglet Years.<br>
+        Vérifiez que l'onglet se nomme bien <strong>Years</strong> et que les colonnes contiennent "Activit", "TJM", "TMA".
+      </td></tr>`;
+    return;
+  }
+
+  diagTable.innerHTML = entries.map(e => {
+    const hasInternal = isInternalClient(e.activity);
+    const used = !hasInternal && (e.tjm || e.tma);
+    return `
+      <tr>
+        <td>${e.activity}
+          <br><span style="font-size:11px;color:var(--ink-faint)">${normalizeKey(e.activity)}</span>
+        </td>
+        <td class="right">${e.tjm ? fmtCurrency(e.tjm) : '<span style="color:var(--ink-faint)">—</span>'}</td>
+        <td class="right">${e.tma ? e.tma.toLocaleString('fr-FR', { maximumFractionDigits: 3 }) : '<span style="color:var(--ink-faint)">—</span>'}</td>
+        <td class="right">${used
+          ? '<span style="color:var(--good);font-weight:600">✓ oui</span>'
+          : '<span style="color:var(--accent)">' + (hasInternal ? 'interne (ignoré)' : '—') + '</span>'
+        }</td>
+      </tr>`;
+  }).join('');
+}
 
 function applyTheme(theme) {
   const isDark = theme === 'dark';
