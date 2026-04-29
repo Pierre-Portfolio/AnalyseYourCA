@@ -110,7 +110,8 @@
     line-height: 0.98;
     letter-spacing: -0.02em;
     margin: 0 auto 16px;
-    max-width: 14ch;
+    max-width: none;
+    white-space: nowrap;
     font-variation-settings: "opsz" 144;
   }
 
@@ -498,24 +499,6 @@
       </button>
     </div>
 
-    <div class="clients-wrap hidden" id="clientsRatesPanel">
-      <div class="clients-header">
-        <strong>Clients</strong> · TJM / TMA
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Client</th>
-              <th class="right">TJM</th>
-              <th class="right">TMA</th>
-            </tr>
-          </thead>
-          <tbody id="clientsTable"></tbody>
-        </table>
-      </div>
-    </div>
-
     <div class="chart-wrap">
       <canvas id="caChart"></canvas>
     </div>
@@ -560,6 +543,26 @@
   <footer>
     Glissez un nouveau fichier à tout moment pour mettre à jour les données.
   </footer>
+
+  <section id="clientRatesSection" class="hidden" style="margin-top: 40px;">
+    <div class="section-label">
+      <span class="num">iv.</span>
+      <span class="name">Clients</span>
+      <span class="meta">TJM / TMA depuis l'onglet Years</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Client</th>
+            <th class="right">TJM</th>
+            <th class="right">TMA</th>
+          </tr>
+        </thead>
+        <tbody id="clientRatesTable"></tbody>
+      </table>
+    </div>
+  </section>
 
 </div>
 
