@@ -446,6 +446,22 @@
 
 </div>
 
+<details id="clientSummary" class="hidden">
+  <summary style="font-family: 'Fraunces', serif; font-size: 18px; margin: 40px 0 20px; cursor: pointer;">Résumé par client</summary>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Client</th>
+          <th class="right">TJM</th>
+          <th class="right">TMA</th>
+        </tr>
+      </thead>
+      <tbody id="clientSummaryTable"></tbody>
+    </table>
+  </div>
+</details>
+
 <script>
 /* ════════════════════════════════════════════════════════════════
    1.  Date helpers
@@ -561,13 +577,13 @@ function handleFile(file) {
     try {
       const data = new Uint8Array(e.target.result);
       const wb   = XLSX.read(data, { type: 'array' });
-      const weeks = parseWorkbook(wb);
+      const { weeks, clients } = parseWorkbook(wb);
       if (!weeks.length) {
         setStatus('Aucun onglet de semaine numéroté trouvé dans le fichier.', 'error');
         return;
       }
       setStatus(`${weeks.length} semaine(s) chargée(s) avec succès.`, 'success');
-      render(year, weeks, file.name);
+      render(year, weeks, clients, file.name);
     } catch (err) {
       console.error(err);
       setStatus('Impossible de lire le fichier : ' + err.message, 'error');
@@ -587,6 +603,7 @@ function handleFile(file) {
 function parseWorkbook(wb) {
   const yearsLookup = parseYearsLookup(wb);
   const out = [];
+  const clients = {};
 
   for (const name of wb.SheetNames) {
     if (!/^\d+$/.test(name.trim())) continue; // skip "Years" etc.
@@ -594,11 +611,11 @@ function parseWorkbook(wb) {
     const sheet = wb.Sheets[name];
     const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null });
 
-    const { duration, revenue, tjm, tma } = parseWeekSheet(rows, yearsLookup);
+    const { duration, revenue, tjm, tma } = parseWeekSheet(rows, yearsLookup, clients);
     out.push({ week: weekNum, duration, revenue, tjm, tma });
   }
   out.sort((a, b) => a.week - b.week);
-  return out;
+  return { weeks: out, clients };
 }
 
 function toNumber(v) {
@@ -649,7 +666,7 @@ function parseYearsLookup(wb) {
   return lookup;
 }
 
-function parseWeekSheet(rows, yearsLookup) {
+function parseWeekSheet(rows, yearsLookup, clients) {
   let duration = 0;
   let revenue = 0;
   let weightedTjm = 0;
@@ -728,6 +745,18 @@ function parseWeekSheet(rows, yearsLookup) {
       weightedTma += rowTma * rowDuration;
       weightedTmaDays += rowDuration;
     }
+
+    // Add to clients
+    if (!clients[activity]) {
+      clients[activity] = { totalDuration: 0, totalWeightedTjm: 0, totalWeightedTma: 0 };
+    }
+    clients[activity].totalDuration += rowDuration;
+    if (rowDuration && rowTjm) {
+      clients[activity].totalWeightedTjm += rowTjm * rowDuration;
+    }
+    if (rowDuration && rowTma) {
+      clients[activity].totalWeightedTma += rowTma * rowDuration;
+    }
   }
 
   return {
@@ -743,7 +772,7 @@ function parseWeekSheet(rows, yearsLookup) {
    ════════════════════════════════════════════════════════════════ */
 let chart = null;
 
-function render(year, weeks, fileName) {
+function render(year, weeks, clients, fileName) {
   const enriched = weeks.map(w => {
     const { start, end } = getWeekDates(year, w.week);
     return { ...w, start, end };
@@ -817,6 +846,24 @@ function render(year, weeks, fileName) {
   void results.offsetWidth;
   results.classList.add('reveal');
   results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  // Client summary
+  const clientSummary = Object.entries(clients).map(([activity, data]) => {
+    const avgTjm = data.totalDuration ? data.totalWeightedTjm / data.totalDuration : 0;
+    const avgTma = data.totalDuration ? data.totalWeightedTma / data.totalDuration : 0;
+    return { activity, avgTjm, avgTma };
+  }).filter(c => (c.avgTjm || c.avgTma) && !(c.avgTjm === 0 && c.avgTma === 0) && !c.activity.toLowerCase().includes('interne'))
+    .sort((a, b) => a.activity.localeCompare(b.activity));
+
+  document.getElementById('clientSummaryTable').innerHTML = clientSummary.map(c => `
+    <tr>
+      <td>${c.activity}</td>
+      <td class="right">${Number.isFinite(c.avgTjm) ? fmtCurrency(c.avgTjm) : '-'}</td>
+      <td class="right">${Number.isFinite(c.avgTma) ? c.avgTma.toLocaleString('fr-FR', { maximumFractionDigits: 3 }) : '-'}</td>
+    </tr>
+  `).join('');
+
+  document.getElementById('clientSummary').classList.remove('hidden');
 }
 
 function drawChart(weeks) {
