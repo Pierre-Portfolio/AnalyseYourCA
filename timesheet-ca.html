@@ -67,26 +67,6 @@
     margin-bottom: 56px;
   }
 
-  .eyebrow {
-    font-family: 'Inter', sans-serif;
-    text-transform: uppercase;
-    letter-spacing: 0.22em;
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--ink-muted);
-    margin-bottom: 18px;
-    display: flex;
-    align-items: center;
-    gap: 14px;
-  }
-  .eyebrow::before, .eyebrow::after {
-    content: '';
-    height: 1px;
-    background: var(--line);
-    flex: 1;
-    max-width: 80px;
-  }
-
   h1 {
     font-family: 'Fraunces', serif;
     font-weight: 400;
@@ -386,11 +366,9 @@
 <div class="container">
 
   <header>
-    <div class="eyebrow">Tableau de bord — Timesheet</div>
     <h1>Suivi du <em>chiffre d'affaires</em><br />par semaine</h1>
     <p class="lede">
-      Déposez votre fichier de timesheet annuel pour visualiser l'évolution
-      hebdomadaire du CA. Chaque onglet numéroté correspond à une semaine.
+      Déposez votre fichier de timesheet annuel pour visualiser l'évolution hebdomadaire du CA.
     </p>
   </header>
 
@@ -605,24 +583,103 @@ function handleFile(file) {
  * Falls back to summing numeric values in column H if no Total row.
  */
 function parseWorkbook(wb) {
+  const yearsLookup = parseYearsLookup(wb);
   const out = [];
+
   for (const name of wb.SheetNames) {
     if (!/^\d+$/.test(name.trim())) continue; // skip "Years" etc.
     const weekNum = parseInt(name.trim(), 10);
     const sheet = wb.Sheets[name];
     const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null });
 
-    let duration = 0, revenue = 0, found = false;
+    const { duration, revenue, tjm, tma } = parseWeekSheet(rows, yearsLookup);
+    out.push({ week: weekNum, duration, revenue, tjm, tma });
+  }
+  out.sort((a, b) => a.week - b.week);
+  return out;
+}
+
+function toNumber(v) {
+  if (v == null) return 0;
+  if (typeof v === 'number') return v;
+  const cleaned = String(v).replace(/[^
+\d.,-]/g, '').replace(/\s/g, '').replace(',', '.');
+  const n = parseFloat(cleaned);
+  return isNaN(n) ? 0 : n;
+}
+
+function normalizeKey(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function parseYearsLookup(wb) {
+  const yearsName = wb.SheetNames.find(name => /^years$/i.test(name.trim()));
+  if (!yearsName) return {};
+
+  const rows = XLSX.utils.sheet_to_json(wb.Sheets[yearsName], { header: 1, defval: null });
+  const headerRowIndex = rows.findIndex(r =>
+    Array.isArray(r) && r.some(c => typeof c === 'string' && normalizeKey(c).includes('activ'))
+  );
+  const header = headerRowIndex >= 0 ? rows[headerRowIndex] : rows[0] || [];
+
+  const activityCol = header.findIndex(c => typeof c === 'string' && normalizeKey(c).includes('activ'));
+  const tjmCol = header.findIndex(c => typeof c === 'string' && normalizeKey(c).includes('tjm'));
+  const tmaCol = header.findIndex(c => typeof c === 'string' && normalizeKey(c).includes('tma'));
+  if (activityCol === -1) return {};
+
+  const lookup = {};
+  for (let i = (headerRowIndex >= 0 ? headerRowIndex + 1 : 1); i < rows.length; i++) {
+    const row = rows[i];
+    if (!row || !row[activityCol]) continue;
+    const activity = String(row[activityCol]).trim();
+    if (!activity) continue;
+
+    const key = normalizeKey(activity);
+    const tjm = toNumber(tjmCol >= 0 ? row[tjmCol] : null);
+    const tma = toNumber(tmaCol >= 0 ? row[tmaCol] : null);
+
+    if (tjm || tma) lookup[key] = { activity, tjm, tma };
+  }
+  return lookup;
+}
+
+function parseWeekSheet(rows, yearsLookup) {
+  let duration = 0;
+  let revenue = 0;
+  let weightedTjm = 0;
+  let weightedTma = 0;
+  let weightedTjmDays = 0;
+  let weightedTmaDays = 0;
+
+  const headerIndex = rows.findIndex(r =>
+    Array.isArray(r) && r.some(c => typeof c === 'string' && normalizeKey(c).includes('activ'))
+  );
+  const header = headerIndex >= 0 ? rows[headerIndex] : [];
+
+  const activityCol = header.findIndex(c => typeof c === 'string' && normalizeKey(c).includes('activ'));
+  const durationCol = header.findIndex(c => typeof c === 'string' && normalizeKey(c).includes('dur'));
+  const revenueCol = header.findIndex(c =>
+    typeof c === 'string' && (normalizeKey(c).includes('chiffre') || normalizeKey(c).includes('ca'))
+  );
+  const tjmCol = header.findIndex(c => typeof c === 'string' && normalizeKey(c).includes('tjm'));
+  const tmaCol = header.findIndex(c => typeof c === 'string' && normalizeKey(c).includes('tma'));
+
+  if (activityCol < 0 || durationCol < 0) {
+    let found = false;
     for (let i = rows.length - 1; i >= 0; i--) {
       const r = rows[i];
       if (r && typeof r[0] === 'string' && r[0].trim().toLowerCase() === 'total') {
         duration = toNumber(r[5]);
-        revenue  = toNumber(r[7]);
+        revenue = toNumber(r[7]);
         found = true;
         break;
       }
     }
-    // Fallback: sum numeric column H entries (skip strings like "TMA : 0")
     if (!found) {
       for (const r of rows.slice(2)) {
         if (!r) continue;
@@ -632,18 +689,52 @@ function parseWorkbook(wb) {
         if (typeof d === 'number') duration += d;
       }
     }
-    out.push({ week: weekNum, duration, revenue });
+    return { duration, revenue, tjm: 0, tma: 0 };
   }
-  out.sort((a, b) => a.week - b.week);
-  return out;
-}
 
-function toNumber(v) {
-  if (v == null) return 0;
-  if (typeof v === 'number') return v;
-  const cleaned = String(v).replace(/[^\d.,-]/g, '').replace(/\s/g, '').replace(',', '.');
-  const n = parseFloat(cleaned);
-  return isNaN(n) ? 0 : n;
+  const startRow = headerIndex >= 0 ? headerIndex + 1 : 0;
+  for (let i = startRow; i < rows.length; i++) {
+    const row = rows[i];
+    if (!row) continue;
+    const firstCell = row[0];
+    if (typeof firstCell === 'string' && firstCell.trim().toLowerCase().startsWith('total')) break;
+
+    const activity = String(row[activityCol] ?? '').trim();
+    if (!activity) continue;
+
+    const rowDuration = toNumber(row[durationCol]);
+    const rowRevenue = toNumber(revenueCol >= 0 ? row[revenueCol] : null);
+    let rowTjm = toNumber(tjmCol >= 0 ? row[tjmCol] : null);
+    let rowTma = toNumber(tmaCol >= 0 ? row[tmaCol] : null);
+
+    const lookup = yearsLookup[normalizeKey(activity)];
+    if (lookup) {
+      if (lookup.tjm) rowTjm = lookup.tjm;
+      if (lookup.tma) rowTma = lookup.tma;
+    }
+
+    const computedRevenue = rowDuration * rowTjm;
+    const finalRevenue = rowRevenue || computedRevenue;
+
+    duration += rowDuration;
+    revenue += finalRevenue;
+
+    if (rowDuration && rowTjm) {
+      weightedTjm += rowTjm * rowDuration;
+      weightedTjmDays += rowDuration;
+    }
+    if (rowDuration && rowTma) {
+      weightedTma += rowTma * rowDuration;
+      weightedTmaDays += rowDuration;
+    }
+  }
+
+  return {
+    duration,
+    revenue,
+    tjm: weightedTjmDays ? weightedTjm / weightedTjmDays : 0,
+    tma: weightedTmaDays ? weightedTma / weightedTmaDays : 0
+  };
 }
 
 /* ════════════════════════════════════════════════════════════════
