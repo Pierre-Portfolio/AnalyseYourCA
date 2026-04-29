@@ -440,7 +440,7 @@
 <div class="container">
 
   <header>
-    <button id="themeToggleBtn" class="theme-toggle" type="button">Mode sombre</button>
+    <button id="themeToggleBtn" class="theme-toggle" type="button" aria-label="Basculer en mode sombre">🌙</button>
     <h1>Suivi du <em>chiffre d'affaires</em></h1>
     <p class="lede">
       Déposez votre fichier de timesheet annuel pour visualiser l'évolution hebdomadaire du CA.
@@ -607,7 +607,6 @@ function updateYearHint() {
 }
 yearInput.addEventListener('input', updateYearHint);
 updateYearHint();
-loadTheme();
 
 /* ════════════════════════════════════════════════════════════════
    3.  Drag & drop
@@ -860,24 +859,30 @@ const themeToggleBtn = document.getElementById('themeToggleBtn');
 function applyTheme(theme) {
   const isDark = theme === 'dark';
   document.body.classList.toggle('dark', isDark);
-  themeToggleBtn.textContent = isDark ? 'Mode clair' : 'Mode sombre';
+  if (themeToggleBtn) {
+    themeToggleBtn.textContent = isDark ? '☀️' : '🌙';
+    themeToggleBtn.setAttribute('aria-label', isDark ? 'Basculer en mode clair' : 'Basculer en mode sombre');
+    themeToggleBtn.title = isDark ? 'Mode clair' : 'Mode sombre';
+  }
   localStorage.setItem('preferredTheme', theme);
 }
 
 function loadTheme() {
   const saved = localStorage.getItem('preferredTheme');
-  if (saved === 'dark' || saved === 'light') {
-    applyTheme(saved);
-    return;
-  }
-  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  applyTheme(prefersDark ? 'dark' : 'light');
+  const theme = (saved === 'dark' || saved === 'light')
+    ? saved
+    : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  applyTheme(theme);
 }
 
-themeToggleBtn.addEventListener('click', () => {
-  const nextTheme = document.body.classList.contains('dark') ? 'light' : 'dark';
-  applyTheme(nextTheme);
-});
+if (themeToggleBtn) {
+  themeToggleBtn.addEventListener('click', () => {
+    const nextTheme = document.body.classList.contains('dark') ? 'light' : 'dark';
+    applyTheme(nextTheme);
+  });
+}
+
+loadTheme();
 
 toggleRatesBtn.addEventListener('click', () => {
   const isHidden = clientsRatesPanel.classList.toggle('hidden');
