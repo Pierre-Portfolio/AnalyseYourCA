@@ -618,19 +618,8 @@ function normalizeKey(value) {
     .trim();
 }
 
-function findLookupForActivity(activity, yearsLookup) {
-  const key = normalizeKey(activity);
-  if (yearsLookup[key]) return yearsLookup[key];
-
-  const matches = Object.entries(yearsLookup).filter(([lookupKey]) =>
-    lookupKey.includes(key) || key.includes(lookupKey)
-  );
-  if (matches.length === 1) return matches[0][1];
-  return null;
-}
-
 function parseYearsLookup(wb) {
-  const yearsName = wb.SheetNames.find(name => /^(years?|ann(e|é)e)s?$/i.test(name.trim()));
+  const yearsName = wb.SheetNames.find(name => /^years$/i.test(name.trim()));
   if (!yearsName) return {};
 
   const rows = XLSX.utils.sheet_to_json(wb.Sheets[yearsName], { header: 1, defval: null });
@@ -655,7 +644,7 @@ function parseYearsLookup(wb) {
     const tjm = toNumber(tjmCol >= 0 ? row[tjmCol] : null);
     const tma = toNumber(tmaCol >= 0 ? row[tmaCol] : null);
 
-    if (tjm || tma || key) lookup[key] = { activity, tjm, tma };
+    if (tjm || tma) lookup[key] = { activity, tjm, tma };
   }
   return lookup;
 }
@@ -669,24 +658,40 @@ function parseWeekSheet(rows, yearsLookup) {
   let weightedTmaDays = 0;
 
   const headerIndex = rows.findIndex(r =>
-    Array.isArray(r) && r.some(c => typeof c === 'string' && normalizeKey(c).includes('activ')) &&
-    r.some(c => typeof c === 'string' && (normalizeKey(c).includes('dur') || normalizeKey(c).includes('tjm') || normalizeKey(c).includes('chiffre') || normalizeKey(c).includes('ca')))
+    Array.isArray(r) && r.some(c => typeof c === 'string' && normalizeKey(c).includes('activ'))
   );
   const header = headerIndex >= 0 ? rows[headerIndex] : [];
 
-  let activityCol = header.findIndex(c => typeof c === 'string' && normalizeKey(c).includes('activ'));
-  let durationCol = header.findIndex(c => typeof c === 'string' && normalizeKey(c).includes('dur'));
-  let revenueCol = header.findIndex(c =>
+  const activityCol = header.findIndex(c => typeof c === 'string' && normalizeKey(c).includes('activ'));
+  const durationCol = header.findIndex(c => typeof c === 'string' && normalizeKey(c).includes('dur'));
+  const revenueCol = header.findIndex(c =>
     typeof c === 'string' && (normalizeKey(c).includes('chiffre') || normalizeKey(c).includes('ca'))
   );
-  let tjmCol = header.findIndex(c => typeof c === 'string' && normalizeKey(c).includes('tjm'));
-  let tmaCol = header.findIndex(c => typeof c === 'string' && normalizeKey(c).includes('tma'));
+  const tjmCol = header.findIndex(c => typeof c === 'string' && normalizeKey(c).includes('tjm'));
+  const tmaCol = header.findIndex(c => typeof c === 'string' && normalizeKey(c).includes('tma'));
 
-  if (activityCol < 0) activityCol = 1;
-  if (durationCol < 0) durationCol = 5;
-  if (tjmCol < 0) tjmCol = 6;
-  if (tmaCol < 0) tmaCol = 6;
-  if (revenueCol < 0) revenueCol = 7;
+  if (activityCol < 0 || durationCol < 0) {
+    let found = false;
+    for (let i = rows.length - 1; i >= 0; i--) {
+      const r = rows[i];
+      if (r && typeof r[0] === 'string' && r[0].trim().toLowerCase() === 'total') {
+        duration = toNumber(r[5]);
+        revenue = toNumber(r[7]);
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      for (const r of rows.slice(2)) {
+        if (!r) continue;
+        const v = r[7];
+        if (typeof v === 'number') revenue += v;
+        const d = r[5];
+        if (typeof d === 'number') duration += d;
+      }
+    }
+    return { duration, revenue, tjm: 0, tma: 0 };
+  }
 
   const startRow = headerIndex >= 0 ? headerIndex + 1 : 0;
   for (let i = startRow; i < rows.length; i++) {
@@ -699,18 +704,14 @@ function parseWeekSheet(rows, yearsLookup) {
     if (!activity) continue;
 
     const rowDuration = toNumber(row[durationCol]);
-    const rowRevenue = toNumber(row[revenueCol]);
-    let rowTjm = toNumber(row[tjmCol]);
-    let rowTma = toNumber(row[tmaCol]);
+    const rowRevenue = toNumber(revenueCol >= 0 ? row[revenueCol] : null);
+    let rowTjm = toNumber(tjmCol >= 0 ? row[tjmCol] : null);
+    let rowTma = toNumber(tmaCol >= 0 ? row[tmaCol] : null);
 
-    const lookup = findLookupForActivity(activity, yearsLookup);
+    const lookup = yearsLookup[normalizeKey(activity)];
     if (lookup) {
-      if (lookup.tjm || lookup.tjm === 0) rowTjm = lookup.tjm;
-      if (lookup.tma || lookup.tma === 0) rowTma = lookup.tma;
-    }
-
-    if (!rowTjm && rowRevenue && rowDuration) {
-      rowTjm = rowRevenue / rowDuration;
+      if (lookup.tjm) rowTjm = lookup.tjm;
+      if (lookup.tma) rowTma = lookup.tma;
     }
 
     const computedRevenue = rowDuration * rowTjm;
@@ -800,8 +801,8 @@ function render(year, weeks, fileName) {
       <td class="week-num">S${w.week}</td>
       <td class="dates">${fmtRange(w.start, w.end)}</td>
       <td class="right">${w.duration.toLocaleString('fr-FR', { maximumFractionDigits: 4 })}</td>
-      <td class="right">${Number.isFinite(w.tjm) ? fmtCurrency(w.tjm) : '-'}</td>
-      <td class="right">${Number.isFinite(w.tma) ? w.tma.toLocaleString('fr-FR', { maximumFractionDigits: 3 }) : '-'}</td>
+      <td class="right">${w.tjm ? fmtCurrency(w.tjm) : '-'}</td>
+      <td class="right">${w.tma ? w.tma.toLocaleString('fr-FR', { maximumFractionDigits: 3 }) : '-'}</td>
       <td class="right amount">${fmtCurrency(w.revenue)}</td>
     </tr>
   `).join('');
