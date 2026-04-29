@@ -430,6 +430,8 @@
             <th>Semaine</th>
             <th>Période</th>
             <th class="right">Durée (j)</th>
+            <th class="right">TJM</th>
+            <th class="right">TMA</th>
             <th class="right">Chiffre d'affaire</th>
           </tr>
         </thead>
@@ -602,8 +604,7 @@ function parseWorkbook(wb) {
 function toNumber(v) {
   if (v == null) return 0;
   if (typeof v === 'number') return v;
-  const cleaned = String(v).replace(/[^
-\d.,-]/g, '').replace(/\s/g, '').replace(',', '.');
+  const cleaned = String(v).replace(/[^\d.,-]/g, '').replace(/\s/g, '').replace(',', '.');
   const n = parseFloat(cleaned);
   return isNaN(n) ? 0 : n;
 }
@@ -752,6 +753,10 @@ function render(year, weeks, fileName) {
   const totalCA = enriched.reduce((s, w) => s + w.revenue, 0);
   const avgCA   = totalCA / enriched.length;
   const totalDays = enriched.reduce((s, w) => s + w.duration, 0);
+  const totalWeightedTjm = enriched.reduce((s, w) => s + (w.tjm || 0) * w.duration, 0);
+  const totalWeightedTma = enriched.reduce((s, w) => s + (w.tma || 0) * w.duration, 0);
+  const avgTjm = totalDays ? totalWeightedTjm / totalDays : 0;
+  const avgTma = totalDays ? totalWeightedTma / totalDays : 0;
   const best = enriched.reduce((a, b) => (b.revenue > a.revenue ? b : a), enriched[0]);
 
   document.getElementById('stats').innerHTML = `
@@ -764,6 +769,16 @@ function render(year, weeks, fileName) {
       <div class="label">Moyenne hebdo</div>
       <div class="value">${fmtCurrency(avgCA)}</div>
       <div class="sub">par semaine</div>
+    </div>
+    <div class="stat">
+      <div class="label">TJM moyen</div>
+      <div class="value">${fmtCurrency(avgTjm)}</div>
+      <div class="sub">pondéré sur ${totalDays.toLocaleString('fr-FR')} jours</div>
+    </div>
+    <div class="stat">
+      <div class="label">TMA moyen</div>
+      <div class="value">${avgTma.toLocaleString('fr-FR', { maximumFractionDigits: 3 })}</div>
+      <div class="sub">pondéré sur ${totalDays.toLocaleString('fr-FR')} jours</div>
     </div>
     <div class="stat">
       <div class="label">Meilleure semaine</div>
@@ -786,6 +801,8 @@ function render(year, weeks, fileName) {
       <td class="week-num">S${w.week}</td>
       <td class="dates">${fmtRange(w.start, w.end)}</td>
       <td class="right">${w.duration.toLocaleString('fr-FR', { maximumFractionDigits: 4 })}</td>
+      <td class="right">${w.tjm ? fmtCurrency(w.tjm) : '-'}</td>
+      <td class="right">${w.tma ? w.tma.toLocaleString('fr-FR', { maximumFractionDigits: 3 }) : '-'}</td>
       <td class="right amount">${fmtCurrency(w.revenue)}</td>
     </tr>
   `).join('');
