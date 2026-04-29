@@ -520,26 +520,6 @@
     </div>
   </section>
 
-  <section id="clientRatesSection" class="hidden">
-    <div class="section-label">
-      <span class="num">iv.</span>
-      <span class="name">Clients</span>
-      <span class="meta">TJM / TMA depuis l'onglet Years</span>
-    </div>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Client</th>
-            <th class="right">TJM</th>
-            <th class="right">TMA</th>
-          </tr>
-        </thead>
-        <tbody id="clientRatesTable"></tbody>
-      </table>
-    </div>
-  </section>
-
   <footer>
     Glissez un nouveau fichier à tout moment pour mettre à jour les données.
   </footer>
@@ -916,23 +896,24 @@ toggleRatesBtn.addEventListener('click', () => {
 
 function updateClientRatesPanel(clientRates) {
   currentClientRates = clientRates || [];
-  if (!currentClientRates.length) {
-    toggleRatesBtn.classList.add('hidden');
-    clientsRatesPanel.classList.add('hidden');
-    clientRatesSection.classList.add('hidden');
-    clientsTable.innerHTML = '';
-    if (clientRatesTable) clientRatesTable.innerHTML = '';
-    return;
-  }
-
-  toggleRatesBtn.classList.remove('hidden');
-  toggleRatesBtn.textContent = 'Afficher les TJM/TMA des clients';
+  toggleRatesBtn.classList.toggle('hidden', !currentClientRates.length);
   clientsRatesPanel.classList.add('hidden');
   clientRatesSection.classList.remove('hidden');
   renderClientRates(currentClientRates);
 }
 
 function renderClientRates(clientRates) {
+  if (!clientRates.length) {
+    const emptyRow = `
+      <tr>
+        <td colspan="3" class="right">Aucun TJM/TMA client trouvé dans l'onglet Years.</td>
+      </tr>
+    `;
+    clientsTable.innerHTML = emptyRow;
+    if (clientRatesTable) clientRatesTable.innerHTML = emptyRow;
+    return;
+  }
+
   const rows = clientRates.map(rate => `
     <tr>
       <td>${rate.activity}</td>
