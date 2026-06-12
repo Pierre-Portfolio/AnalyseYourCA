@@ -1,5 +1,5 @@
 <h1 align="center">
-  <img src="./assets/images/github/header.gif" alt="AnalyseYourCA" />
+  <img src="./assets/images/github/header.png" alt="AnalyseYourCA" />
 </h1>
 <img src="./assets/images/github/star.gif" alt="star" />
 
