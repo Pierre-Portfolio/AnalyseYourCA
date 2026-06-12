@@ -3,14 +3,19 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<!-- 'unsafe-inline' reste requis par le script et les styles inline de cette page ;
+     à durcir via des hashes CSP si le JS inline est un jour externalisé -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' https://cdn.sheetjs.com https://cdn.jsdelivr.net; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data:; base-uri 'none'; form-action 'none'; object-src 'none'" />
 <title>Suivi du Chiffre d'Affaires Hebdomadaire</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"
-        integrity="sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw"
+<!-- ≥ 0.19.3 / 0.20.2 requis (CVE-2023-30533, CVE-2024-22363) ; les versions corrigées
+     ne sont publiées que sur le CDN officiel SheetJS, pas sur npm/jsdelivr -->
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"
+        integrity="sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT"
         crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"
         integrity="sha384-dug+JxfBvklEQdJ4AYuBBAIScUz0bVN73xpy273gcAwHjb3qI0fXmuYNaNfdyYJG"
@@ -1159,6 +1164,15 @@ function fmtCurrency(n) {
     style: 'currency', currency: 'EUR', maximumFractionDigits: 0
   }).format(n || 0);
 }
+// Toute valeur issue du fichier XLSX doit passer ici avant interpolation en innerHTML
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 /* ════════════════════════════════════════════════════════════════
    2.  Year-hint live update
@@ -1650,7 +1664,7 @@ function renderDiag(yearsLookup, sheetNames, year) {
       } catch (e) { /* ignore */ }
     }
 
-    return `${badge} index&nbsp;${s.index} → nom brut&nbsp;: <code style="background:var(--bg-soft);padding:1px 6px;border-radius:3px">${s.repr}</code>${datePart}`;
+    return `${badge} index&nbsp;${s.index} → nom brut&nbsp;: <code style="background:var(--bg-soft);padding:1px 6px;border-radius:3px">${escapeHtml(s.repr)}</code>${datePart}`;
   }).join('<br>');
 }
 
@@ -1725,7 +1739,7 @@ function renderClientRates(clientRates) {
 
   const rows = rates.map(rate => `
     <tr>
-      <td>${rate.activity}</td>
+      <td>${escapeHtml(rate.activity)}</td>
       <td class="right">${fmtCurrency(rate.tjm)}</td>
       <td class="right">${fmtCurrency(rate.tma)}</td>
     </tr>
