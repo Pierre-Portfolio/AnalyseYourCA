@@ -9,8 +9,12 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"
+        integrity="sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw"
+        crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"
+        integrity="sha384-dug+JxfBvklEQdJ4AYuBBAIScUz0bVN73xpy273gcAwHjb3qI0fXmuYNaNfdyYJG"
+        crossorigin="anonymous"></script>
 
 <style>
   :root {
@@ -651,6 +655,27 @@
     .stat { padding: 20px 16px; }
     .dropzone { padding: 40px 20px; }
   }
+
+  .pdf-btn {
+    margin-left: auto;
+    font-size: 11px; padding: 5px 14px;
+    border: 1px solid var(--line); border-radius: 999px;
+    background: transparent; color: var(--ink-muted);
+    cursor: pointer; font-family: 'Inter', sans-serif; font-weight: 600;
+    transition: .2s;
+  }
+  .pdf-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  @media print {
+    header, .section-label .pdf-btn, #fileInput, .dropzone, .status,
+    section:not(#results), .chart-toggle-actions, .pdf-btn,
+    .theme-toggle, .lang-toggle, footer, #clientRatesSection, #diagSection { display: none !important; }
+    body { background: #fff !important; color: #000 !important; }
+    .chart-toggle-body { display: block !important; }
+    .chart-wrap-inner { break-inside: avoid; page-break-inside: avoid; }
+    #results { display: block !important; }
+    canvas { max-width: 100% !important; }
+  }
 </style>
 </head>
 <body>
@@ -708,6 +733,7 @@
       <span class="num">iii.</span>
       <span class="name" data-i18n="results">Résultats</span>
       <span class="meta" id="resultsMeta"></span>
+      <button id="pdfBtn" class="pdf-btn" type="button" data-i18n="exportPdf">📥 Exporter PDF</button>
     </div>
 
     <div class="stats" id="stats"></div>
@@ -961,6 +987,7 @@ const TRANS = {
     diagSheets: (n) => `${n} onglet(s) dans le fichier`,
     diagDetected: "Onglets détectés dans le fichier",
     noClientRates: "Aucun TJM/TMA client trouvé dans l'onglet Years.",
+    exportPdf: "📥 Exporter PDF",
     monthNames: ['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'],
     // Monthly performance
     chartMonthPerf: "Objectifs mensuels — Succès & Échecs",
@@ -1024,6 +1051,7 @@ const TRANS = {
     diagSheets: (n) => `${n} tab(s) in the file`,
     diagDetected: "Tabs detected in the file",
     noClientRates: "No client rates (TJM/TMA) found in the Years tab.",
+    exportPdf: "📥 Export PDF",
     monthNames: ['Jan.','Feb.','Mar.','Apr.','May','Jun.','Jul.','Aug.','Sep.','Oct.','Nov.','Dec.'],
     // Monthly performance
     chartMonthPerf: "Monthly Targets — Success & Failures",
@@ -1165,13 +1193,16 @@ function parseOneFile(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = e => {
-      try {
-        const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-        const { weeks, clientRates, yearsLookup, sheetNames, detectedYear } = parseWorkbook(wb);
-        const year = detectedYear || new Date().getFullYear();
-        const enriched = weeks.map(w => { const { start, end } = getWeekDates(year, w.week); return { ...w, start, end }; });
-        resolve({ weeks, enriched, clientRates, yearsLookup, sheetNames, year, fileName: file.name });
-      } catch (err) { reject(err); }
+      // Yield one frame so the "Loading…" status renders before the synchronous XLSX parse blocks
+      requestAnimationFrame(() => {
+        try {
+          const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+          const { weeks, clientRates, yearsLookup, sheetNames, detectedYear } = parseWorkbook(wb);
+          const year = detectedYear || new Date().getFullYear();
+          const enriched = weeks.map(w => { const { start, end } = getWeekDates(year, w.week); return { ...w, start, end }; });
+          resolve({ weeks, enriched, clientRates, yearsLookup, sheetNames, year, fileName: file.name });
+        } catch (err) { reject(err); }
+      });
     };
     reader.onerror = () => reject(new Error('Erreur de lecture'));
     reader.readAsArrayBuffer(file);
@@ -1257,6 +1288,11 @@ function isInternalClient(value) {
   return normalizeKey(value).includes('interne');
 }
 
+// Single source of truth for Years-tab detection — used in both parseYearsLookup and parseWorkbook
+function isYearsSheet(name) {
+  return /^years$/i.test(String(name).trim());
+}
+
 function resolveWeekNumber(name, sheetIndex, nonYearsIndex) {
   const trimmed = name.trim();
 
@@ -1286,8 +1322,7 @@ function parseWorkbook(wb) {
 
   for (let si = 0; si < wb.SheetNames.length; si++) {
     const name = wb.SheetNames[si];
-    // Ignorer uniquement l'onglet Years (insensible à la casse)
-    if (/^years$/i.test(name.trim())) continue;
+    if (isYearsSheet(name)) continue;
 
     const weekNum = resolveWeekNumber(name, si, nonYearsIndex);
     nonYearsIndex++;
@@ -1309,7 +1344,7 @@ function parseWorkbook(wb) {
 
   let _nonYearsIdx = 0;
   const sheetNames = wb.SheetNames.map((n, i) => {
-    const isYears = /^years$/i.test(n.trim());
+    const isYears = isYearsSheet(n);
     const weekNum = isYears ? null : resolveWeekNumber(n, i, _nonYearsIdx);
     if (!isYears) _nonYearsIdx++;
     return {
@@ -1326,9 +1361,17 @@ function parseWorkbook(wb) {
 
 function toNumber(v) {
   if (v == null) return 0;
-  if (typeof v === 'number') return v;
-  const cleaned = String(v).replace(/[^\d.,-]/g, '').replace(/\s/g, '').replace(',', '.');
-  const n = parseFloat(cleaned);
+  if (typeof v === 'number') return isNaN(v) ? 0 : v;
+  let s = String(v).replace(/[^\d.,-]/g, ''); // strip spaces, currency symbols, etc.
+  if (!s) return 0;
+  // French/German: period=thousands sep, comma=decimal (e.g. "1.234,56")
+  if (s.includes(',') && s.lastIndexOf('.') < s.lastIndexOf(',')) {
+    s = s.replace(/\./g, '').replace(',', '.');
+  } else {
+    // EN or plain: remove commas (thousands seps), dot stays as decimal
+    s = s.replace(/,/g, '');
+  }
+  const n = parseFloat(s);
   return isNaN(n) ? 0 : n;
 }
 
@@ -1342,7 +1385,7 @@ function normalizeKey(value) {
 }
 
 function parseYearsLookup(wb) {
-  const yearsName = wb.SheetNames.find(name => /^years$/i.test(name.trim()));
+  const yearsName = wb.SheetNames.find(isYearsSheet);
   if (!yearsName) return { lookup: {}, year: null };
 
   const rows = XLSX.utils.sheet_to_json(wb.Sheets[yearsName], { header: 1, defval: null });
@@ -1775,7 +1818,16 @@ function render(year, enriched, clientRates) {
   // ── Table ──────────────────────────────────────────────────
   renderWeeksTable(enriched);
 
-  // ── Charts ─────────────────────────────────────────────────
+  // ── Reveal section first so canvas dimensions are non-zero when charts draw ──
+  const results = document.getElementById('results');
+  if (results) {
+    results.classList.remove('hidden');
+    results.classList.remove('reveal');
+    void results.offsetWidth; // force reflow so layout is computed
+    results.classList.add('reveal');
+  }
+
+  // ── Charts (drawn after section is visible) ────────────────
   const objectif = Math.max(0, parseInt(document.getElementById('objectifInput')?.value || '0', 10));
   lastEnriched = enriched;
   lastYear     = year;
@@ -1801,20 +1853,20 @@ function render(year, enriched, clientRates) {
   // Sync days block view state on reload
   syncDaysViewBtns();
 
-  const results = document.getElementById('results');
-  if (results) {
-    results.classList.remove('hidden');
-    results.classList.remove('reveal');
-    // Restart animation
-    void results.offsetWidth;
-    results.classList.add('reveal');
-    results.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
+  if (results) results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Opt 7: shared helper — destroys existing instance, returns ctx or null
+function resolveCtx(canvasId, existingChart) {
+  if (existingChart) existingChart.destroy();
+  const canvas = document.getElementById(canvasId);
+  return canvas ? canvas.getContext('2d') : null;
 }
 
 function drawChart(weeks, weeksN1) {
-  const ctx = document.getElementById('caChart').getContext('2d');
-  if (chart) chart.destroy();
+  const ctx = resolveCtx('caChart', chart);
+  chart = null;
+  if (!ctx) return;
 
   const labels = ['', ...weeks.map(w => `S${w.week}`)];
   const data   = [0, ...weeks.map(w => w.revenue)];
@@ -1839,6 +1891,7 @@ function drawChart(weeks, weeksN1) {
     borderColor: accent,
     borderWidth: 2,
     backgroundColor: gradient,
+    hoverBackgroundColor: hexToRgba(accent, 0.25), // prevent Chart.js from parsing the CanvasGradient
     fill: true,
     tension: 0.32,
     pointRadius: 4,
@@ -2956,6 +3009,23 @@ function drawMonthChart(year, weeks, weeksN1) {
   });
 }
 
+// Opt 3 / Opt 7: single dispatch function — redraws one chart by ID using current state
+function redrawChart(chartId) {
+  if (!lastEnriched) return;
+  const n1 = chartCmp[chartId] ? getN1Enriched() : null;
+  switch (chartId) {
+    case 'caChart':          drawChart(lastEnriched, n1); break;
+    case 'projectionChart':  drawProjectionChart(lastEnriched, lastObjectif, lastYear, n1); break;
+    case 'internalChart':    drawInternalDaysChart(lastEnriched, n1); break;
+    case 'billingRateChart': drawBillingRateChart(lastEnriched, billingRateMode, n1); break;
+    case 'caMonthChart':     drawMonthChart(lastYear, lastEnriched, n1); break;
+    case 'topClientsChart':  drawTopClientsChart(lastEnriched, n1); break;
+    case 'summaryDaysChart': drawSummaryDaysChart(lastYear, lastEnriched, n1); break;
+    case 'regieChart':       drawActivityDaysChart('regieChart', lastYear, lastEnriched, 'tjm', n1); break;
+    case 'tmaChart':         drawActivityDaysChart('tmaChart', lastYear, lastEnriched, 'tma', n1); break;
+  }
+}
+
 // ── Objectif live update ──────────────────────────────────────
 const objectifInput = document.getElementById('objectifInput');
 if (objectifInput) {
@@ -2987,6 +3057,11 @@ document.addEventListener('click', e => {
   body.classList.toggle('open', !isOpen);
   header.classList.toggle('open', !isOpen);
   if (chevron) chevron.classList.toggle('open', !isOpen);
+  // Opt 3: lazy redraw — if section just opened, refresh its chart
+  if (!isOpen) {
+    const chartId = header.closest('.chart-toggle')?.dataset.chartId;
+    if (chartId) redrawChart(chartId);
+  }
 });
 
 // ── Compare N-1 toggle ────────────────────────────────────────
@@ -3312,6 +3387,25 @@ document.addEventListener('click', e => {
     renderClientRates();
   }
 });
+
+// ── PDF Export ────────────────────────────────────────────────
+const pdfBtn = document.getElementById('pdfBtn');
+if (pdfBtn) {
+  pdfBtn.addEventListener('click', () => {
+    // Expand all chart sections before printing so nothing is cut
+    document.querySelectorAll('.chart-toggle-body:not(.open)').forEach(body => {
+      body.classList.add('open');
+      const header = body.previousElementSibling;
+      if (header) { header.classList.add('open'); const c = header.querySelector('.chart-toggle-chevron'); if (c) c.classList.add('open'); }
+    });
+    // Also show both revenue sub-charts
+    const rmw = document.getElementById('revenueMonthWrap');
+    const rww = document.getElementById('revenueWeekWrap');
+    if (rmw) rmw.style.removeProperty('display');
+    if (rww) rww.style.removeProperty('display');
+    window.print();
+  });
+}
 </script>
 
 </body>
