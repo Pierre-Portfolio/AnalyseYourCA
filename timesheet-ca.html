@@ -102,6 +102,15 @@
     border-color: var(--accent);
     color: var(--accent);
   }
+  .lang-toggle {
+    right: 60px;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .lang-toggle svg { display: block; border-radius: 2px; flex-shrink: 0; }
+  .lang-toggle:hover { color: var(--accent); }
 
   h1 {
     font-family: 'Fraunces', serif;
@@ -190,7 +199,7 @@
     border: none;
     border-bottom: 2px solid var(--ink);
     padding: 4px 8px 4px 0;
-    width: 200px;
+    width: 260px;
     outline: none;
     transition: border-color .2s;
   }
@@ -205,18 +214,6 @@
   }
   .field input[type=number] { -moz-appearance: textfield; }
 
-  .year-hint {
-    font-family: 'Fraunces', serif;
-    font-style: italic;
-    font-size: 15px;
-    color: var(--ink-muted);
-    padding-bottom: 14px;
-  }
-  .year-hint .calendar-day {
-    font-style: normal;
-    font-weight: 600;
-    color: var(--ink);
-  }
 
   /* ─── Drop zone ──────────────────────────────────────────── */
   .dropzone {
@@ -321,6 +318,7 @@
     position: relative;
   }
   .chart-wrap canvas { max-height: 420px; }
+  #topClientsWrap canvas { max-height: none; }
 
   /* ─── Table ──────────────────────────────────────────────── */
   .table-wrap {
@@ -381,6 +379,57 @@
     background: var(--bg-soft);
   }
   thead th.right { text-align: right; }
+  thead th.sortable {
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+  thead th.sortable:hover { color: var(--ink); }
+  thead th.sortable.active { color: var(--accent); }
+  .sort-icon {
+    display: inline-block;
+    margin-left: 4px;
+    font-size: 9px;
+    opacity: 0.3;
+    vertical-align: middle;
+  }
+  thead th.active .sort-icon { opacity: 1; }
+
+  /* ─── Chart header & compare button ──────────────────────── */
+  .chart-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .chart-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    font-weight: 600;
+    color: var(--ink-muted);
+  }
+  .cmp-btn {
+    font-size: 10px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    padding: 4px 10px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--ink-faint);
+    cursor: pointer;
+    transition: all .2s;
+    display: none;
+  }
+  .cmp-btn.visible { display: inline-block; }
+  .cmp-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .cmp-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
   tbody td {
     padding: 14px 16px;
     border-bottom: 1px solid var(--line-soft);
@@ -425,9 +474,179 @@
     text-align: center;
   }
 
+  /* ─── Chart toggle (collapsible charts) ─────────────────── */
+  .chart-toggle {
+    border: 1px solid var(--line);
+    background: var(--bg-card);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 16px;
+  }
+  .chart-toggle-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    cursor: pointer;
+    user-select: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color .2s, background .15s;
+    gap: 12px;
+  }
+  .chart-toggle-header:hover { background: var(--bg-soft); }
+  .chart-toggle-header.open  { border-bottom-color: var(--line); }
+  .chart-toggle-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+  .chart-toggle-chevron {
+    font-size: 9px;
+    color: var(--ink-faint);
+    transition: transform .22s ease;
+    flex-shrink: 0;
+    display: inline-block;
+  }
+  .chart-toggle-chevron.open { transform: rotate(90deg); }
+  .chart-toggle-actions {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  /* Prevent header clicks from bubbling through action buttons */
+  .chart-toggle-actions button { pointer-events: auto; }
+  .chart-toggle-body        { display: none; }
+  .chart-toggle-body.open   { display: block; }
+  .chart-wrap-inner {
+    padding: 20px 20px 12px;
+    position: relative;
+    height: 400px;
+  }
+  .chart-wrap-inner canvas { max-height: 100%; }
+  /* Top clients & activity charts use dynamic heights */
+  #topClientsWrap,
+  #regieChartWrap,
+  #tmaChartWrap { height: auto; min-height: 200px; }
+
+  /* ─── Monthly performance table ─────────────────────────── */
+  .month-perf-summary {
+    display: flex;
+    gap: 20px;
+    font-size: 12px;
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    color: var(--ink-faint);
+    white-space: nowrap;
+  }
+  .month-perf-summary .ok  { color: var(--good); }
+  .month-perf-summary .ko  { color: var(--accent-soft); }
+
+  .month-perf-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+  }
+  .month-perf-table thead th {
+    text-align: left;
+    padding: 11px 16px;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-weight: 600;
+    color: var(--ink-muted);
+    background: var(--bg-soft);
+    border-bottom: 1px solid var(--line);
+  }
+  .month-perf-table thead th.right { text-align: right; }
+  .month-perf-table thead th.center { text-align: center; }
+  .month-perf-table tbody td {
+    padding: 11px 16px;
+    border-bottom: 1px solid var(--line-soft);
+    vertical-align: middle;
+  }
+  .month-perf-table tbody td.right { text-align: right; }
+  .month-perf-table tbody td.center { text-align: center; }
+  .month-perf-table tbody tr:hover { background: var(--bg-soft); }
+  .month-perf-table tbody tr.future td { color: var(--ink-faint); font-style: italic; }
+
+  .month-name-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+  }
+  .month-icon {
+    width: 18px;
+    height: 18px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    color: var(--ink-faint);
+    flex-shrink: 0;
+  }
+
+  /* Ratio ring */
+  .ratio-ring { display: inline-block; vertical-align: middle; }
+
+  /* Badge SUCCESS / FAILED */
+  .badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    padding: 3px 9px;
+    border-radius: 4px;
+    font-family: 'Inter', sans-serif;
+  }
+  .badge-success {
+    background: rgba(74,107,58,0.15);
+    color: var(--good);
+    border: 1px solid rgba(74,107,58,0.3);
+  }
+  body.dark .badge-success {
+    background: rgba(126,207,147,0.15);
+    border-color: rgba(126,207,147,0.3);
+  }
+  .badge-failed {
+    background: rgba(139,38,37,0.12);
+    color: var(--accent-soft);
+    border: 1px solid rgba(139,38,37,0.25);
+  }
+  body.dark .badge-failed {
+    background: rgba(127,157,255,0.12);
+    border-color: rgba(127,157,255,0.25);
+  }
+
+  /* Footer row */
+  .month-perf-table tfoot td {
+    padding: 11px 16px;
+    border-top: 1.5px solid var(--line);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-weight: 600;
+    color: var(--ink-muted);
+  }
+  .month-perf-table tfoot td.right { text-align: right; }
+  .month-perf-table tfoot td .foot-val {
+    font-family: 'Fraunces', serif;
+    font-size: 15px;
+    color: var(--ink);
+    font-style: italic;
+    font-weight: 400;
+    letter-spacing: 0;
+    text-transform: none;
+    margin-left: 6px;
+  }
+
   @media (max-width: 600px) {
     .container { padding: 32px 20px 64px; }
-    .field input[type="number"] { font-size: 40px; width: 160px; }
+    .field input[type="number"] { font-size: 40px; width: 210px; }
     .stat .value { font-size: 28px; }
     .stat { padding: 20px 16px; }
     .dropzone { padding: 40px 20px; }
@@ -440,8 +659,9 @@
 
   <header>
     <button id="themeToggleBtn" class="theme-toggle" type="button" aria-label="Basculer en mode sombre">🌙</button>
-    <h1>Suivi du chiffre d'affaires</h1>
-    <p class="lede">
+    <button id="langToggleBtn" class="theme-toggle lang-toggle" type="button" aria-label="Switch language"></button>
+    <h1 data-i18n="title">Suivi du chiffre d'affaires</h1>
+    <p class="lede" data-i18n="subtitle">
       Déposez votre fichier de timesheet annuel pour visualiser l'évolution hebdomadaire du CA.
     </p>
   </header>
@@ -450,21 +670,16 @@
   <section>
     <div class="section-label">
       <span class="num">i.</span>
-      <span class="name">Configuration de l'année</span>
+      <span class="name" data-i18n="config">Configuration</span>
     </div>
     <div class="year-input-wrap">
       <div class="field">
-        <label for="yearInput">Année</label>
-        <input type="number" id="yearInput" value="2026" min="2000" max="2100" />
+        <label data-i18n="detectedYear">Année détectée</label>
+        <div id="yearDisplay" style="font-family:'Fraunces',serif;font-size:56px;font-weight:500;letter-spacing:-0.02em;color:var(--ink-muted);padding:4px 0;border-bottom:2px solid var(--line);">—</div>
       </div>
       <div class="field">
-        <label for="objectifInput">Objectif CA (€)</label>
-        <input type="number" id="objectifInput" value="155000" min="0" step="1000" />
-      </div>
-      <div class="year-hint">
-        Le 1<sup>er</sup> janvier tombe un
-        <span class="calendar-day" id="dayOfWeek">jeudi</span>.
-        La semaine 1 ira du <span class="calendar-day" id="week1Range">1 au 4 janvier</span>.
+        <label for="objectifInput" data-i18n="objectif">Objectif CA (€)</label>
+        <input type="number" id="objectifInput" value="200000" min="0" step="1000" />
       </div>
     </div>
   </section>
@@ -473,16 +688,16 @@
   <section>
     <div class="section-label">
       <span class="num">ii.</span>
-      <span class="name">Fichier de timesheet</span>
+      <span class="name" data-i18n="fileSection">Fichier de timesheet</span>
     </div>
 
     <div class="dropzone" id="dropzone">
       <div class="icon">⌥</div>
-      <div class="primary">Déposez votre fichier ici</div>
-      <div class="secondary">
-        ou <span class="browse">parcourir</span> · format attendu&nbsp;: <code>.xlsx</code> avec onglets numérotés
+      <div class="primary" data-i18n="dropPrimary">Déposez 1 ou 2 fichiers ici</div>
+      <div class="secondary" id="dropzoneLabel" data-i18n="dropSecondary">
+        ou <span class="browse" data-i18n="browse">parcourir</span> · 1 fichier = année en cours · 2 fichiers = comparaison N / N-1
       </div>
-      <input type="file" id="fileInput" accept=".xlsx,.xlsm,.xls" />
+      <input type="file" id="fileInput" accept=".xlsx,.xlsm,.xls" multiple />
     </div>
     <div class="status" id="status"></div>
   </section>
@@ -491,74 +706,153 @@
   <section id="results" class="hidden">
     <div class="section-label">
       <span class="num">iii.</span>
-      <span class="name">Résultats</span>
+      <span class="name" data-i18n="results">Résultats</span>
       <span class="meta" id="resultsMeta"></span>
     </div>
 
     <div class="stats" id="stats"></div>
 
-    <div class="chart-wrap">
-      <canvas id="caChart"></canvas>
-    </div>
-
-    <div class="chart-wrap" style="margin-top:16px">
-      <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.16em;font-weight:600;color:var(--ink-muted);margin-bottom:14px">
-        CA cumulé vs Objectif &amp; Projection
+    <!-- CA par mois / CA hebdomadaire (fusionnés) -->
+    <div class="chart-toggle" id="revenueToggleBlock">
+      <div class="chart-toggle-header open" id="revenueToggleHeader">
+        <div class="chart-toggle-left">
+          <span class="chart-toggle-chevron open" id="revenueChevron">▶</span>
+          <span class="chart-title" id="revenueTitleLabel" data-i18n="chartMonth">CA par mois</span>
+        </div>
+        <div class="chart-toggle-actions">
+          <button class="revenue-view-btn"        data-view="week"  style="font-size:11px;padding:5px 12px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--ink);cursor:pointer;font-family:'Inter',sans-serif;font-weight:600;transition:.2s" data-i18n="week">Semaine</button>
+          <button class="revenue-view-btn active" data-view="month" style="font-size:11px;padding:5px 12px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--ink);cursor:pointer;font-family:'Inter',sans-serif;font-weight:600;transition:.2s" data-i18n="month">Mois</button>
+          <button class="cmp-btn" id="revenueCmpBtn" data-chart="caMonthChart" title="Comparer avec N-1">⟷ N-1</button>
+        </div>
       </div>
-      <canvas id="projectionChart"></canvas>
-    </div>
-
-    <div class="chart-wrap" style="margin-top:16px">
-      <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.16em;font-weight:600;color:var(--ink-muted);margin-bottom:14px">
-        Jours internes par semaine
-      </div>
-      <canvas id="internalChart"></canvas>
-    </div>
-
-    <div class="chart-wrap" style="margin-top:16px">
-      <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.16em;font-weight:600;color:var(--ink-muted);margin-bottom:14px">
-        CA par mois
-      </div>
-      <canvas id="caMonthChart"></canvas>
-    </div>
-
-    <div class="chart-wrap" style="margin-top:16px">
-      <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.16em;font-weight:600;color:var(--ink-muted);margin-bottom:14px">
-        Top clients — CA généré
-      </div>
-      <div id="topClientsWrap" style="position:relative">
-        <canvas id="topClientsChart"></canvas>
+      <div class="chart-toggle-body open" id="revenueToggleBody">
+        <div class="chart-wrap-inner" id="revenueMonthWrap"><canvas id="caMonthChart"></canvas></div>
+        <div class="chart-wrap-inner" id="revenueWeekWrap"  style="display:none"><canvas id="caChart"></canvas></div>
       </div>
     </div>
 
-    <div class="chart-wrap" style="margin-top:16px">
-      <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.16em;font-weight:600;color:var(--ink-muted);margin-bottom:14px">
-        Jours passés en Régie — par mois et activité
+    <!-- CA cumulé vs Objectif & Projection -->
+    <div class="chart-toggle" data-chart-id="projectionChart">
+      <div class="chart-toggle-header open">
+        <div class="chart-toggle-left">
+          <span class="chart-toggle-chevron open">▶</span>
+          <span class="chart-title" data-i18n="chartProjection">CA cumulé vs Objectif &amp; Projection</span>
+        </div>
+        <div class="chart-toggle-actions">
+          <button class="cmp-btn" data-chart="projectionChart" title="Comparer avec N-1">⟷ N-1</button>
+        </div>
       </div>
-      <div id="regieChartWrap" style="position:relative">
-        <canvas id="regieChart"></canvas>
+      <div class="chart-toggle-body open">
+        <div class="chart-wrap-inner"><canvas id="projectionChart"></canvas></div>
       </div>
     </div>
 
-    <div class="chart-wrap" style="margin-top:16px">
-      <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.16em;font-weight:600;color:var(--ink-muted);margin-bottom:14px">
-        Jours passés en TMA — par mois et activité
+    <!-- ─── Monthly performance toggle ──────────────────────── -->
+    <div class="chart-toggle" id="monthPerfToggle" style="display:none">
+      <div class="chart-toggle-header open" id="monthPerfHeaderBtn" role="button" tabindex="0" aria-expanded="true">
+        <div class="chart-toggle-left">
+          <span class="chart-toggle-chevron open" id="monthPerfChevron">▶</span>
+          <span class="chart-title" data-i18n="chartMonthPerf">Objectifs mensuels — Succès &amp; Échecs</span>
+        </div>
+        <div class="chart-toggle-actions">
+          <button class="perf-mode-btn"        data-mode="week"  style="font-size:11px;padding:5px 12px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--ink);cursor:pointer;font-family:'Inter',sans-serif;font-weight:600;transition:.2s" data-i18n="week">Semaine</button>
+          <button class="perf-mode-btn active" data-mode="month" style="font-size:11px;padding:5px 12px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--ink);cursor:pointer;font-family:'Inter',sans-serif;font-weight:600;transition:.2s" data-i18n="month">Mois</button>
+          <div class="month-perf-summary" id="monthPerfSummary"></div>
+        </div>
       </div>
-      <div id="tmaChartWrap" style="position:relative">
-        <canvas id="tmaChart"></canvas>
+      <div class="chart-toggle-body open" id="monthPerfBodyWrap">
+        <table class="month-perf-table">
+          <thead id="monthPerfHead"><tr></tr></thead>
+          <tbody id="monthPerfBody"></tbody>
+          <tfoot id="monthPerfFoot"></tfoot>
+        </table>
+      </div>
+    </div>
+
+    <!-- Jours internes par semaine -->
+    <div class="chart-toggle" data-chart-id="internalChart">
+      <div class="chart-toggle-header open">
+        <div class="chart-toggle-left">
+          <span class="chart-toggle-chevron open">▶</span>
+          <span class="chart-title" data-i18n="chartInternal">Jours internes par semaine</span>
+        </div>
+        <div class="chart-toggle-actions">
+          <button class="cmp-btn" data-chart="internalChart" title="Comparer avec N-1">⟷ N-1</button>
+        </div>
+      </div>
+      <div class="chart-toggle-body open">
+        <div class="chart-wrap-inner"><canvas id="internalChart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Taux de facturation -->
+    <div class="chart-toggle" data-chart-id="billingRateChart">
+      <div class="chart-toggle-header open">
+        <div class="chart-toggle-left">
+          <span class="chart-toggle-chevron open">▶</span>
+          <span class="chart-title" data-i18n="chartBilling">Taux de facturation</span>
+        </div>
+        <div class="chart-toggle-actions">
+          <button class="billing-toggle active" data-mode="week"  style="font-size:11px;padding:5px 12px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--ink);cursor:pointer;font-family:'Inter',sans-serif;font-weight:600;transition:.2s" data-i18n="week">Semaine</button>
+          <button class="billing-toggle"        data-mode="month" style="font-size:11px;padding:5px 12px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--ink);cursor:pointer;font-family:'Inter',sans-serif;font-weight:600;transition:.2s" data-i18n="month">Mois</button>
+          <button class="billing-toggle"        data-mode="total" style="font-size:11px;padding:5px 12px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--ink);cursor:pointer;font-family:'Inter',sans-serif;font-weight:600;transition:.2s" data-i18n="total">Total</button>
+          <button class="cmp-btn" data-chart="billingRateChart" title="Comparer avec N-1">⟷ N-1</button>
+        </div>
+      </div>
+      <div class="chart-toggle-body open">
+        <div class="chart-wrap-inner"><canvas id="billingRateChart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Top clients -->
+    <div class="chart-toggle" data-chart-id="topClientsChart">
+      <div class="chart-toggle-header open">
+        <div class="chart-toggle-left">
+          <span class="chart-toggle-chevron open">▶</span>
+          <span class="chart-title" data-i18n="chartTopClients">Top clients — CA généré</span>
+        </div>
+        <div class="chart-toggle-actions">
+          <button class="cmp-btn" data-chart="topClientsChart" title="Comparer avec N-1">⟷ N-1</button>
+        </div>
+      </div>
+      <div class="chart-toggle-body open">
+        <div class="chart-wrap-inner" style="height:auto">
+          <div id="topClientsWrap" style="position:relative"><canvas id="topClientsChart"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Jours facturables — bloc fusionné -->
+    <div class="chart-toggle" id="daysToggleBlock">
+      <div class="chart-toggle-header open" id="daysToggleHeader">
+        <div class="chart-toggle-left">
+          <span class="chart-toggle-chevron open" id="daysChevron">▶</span>
+          <span class="chart-title" id="daysTitleLabel" data-i18n="chartSummaryDays">Jours facturables — Régie &amp; TMA par mois</span>
+        </div>
+        <div class="chart-toggle-actions">
+          <button class="days-view-btn active" data-view="summary" style="font-size:11px;padding:5px 12px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--ink);cursor:pointer;font-family:'Inter',sans-serif;font-weight:600;transition:.2s" data-i18n="chartSummaryDaysShort">Facturables</button>
+          <button class="days-view-btn"        data-view="regie"   style="font-size:11px;padding:5px 12px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--ink);cursor:pointer;font-family:'Inter',sans-serif;font-weight:600;transition:.2s" data-i18n="chartRegieShort">Régie</button>
+          <button class="days-view-btn"        data-view="tma"     style="font-size:11px;padding:5px 12px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--ink);cursor:pointer;font-family:'Inter',sans-serif;font-weight:600;transition:.2s" data-i18n="chartTMAShort">TMA</button>
+          <button class="cmp-btn" id="daysCmpBtn" data-chart="summaryDaysChart" title="Comparer avec N-1">⟷ N-1</button>
+        </div>
+      </div>
+      <div class="chart-toggle-body open" id="daysToggleBody">
+        <div class="chart-wrap-inner" id="daysSummaryWrap"><canvas id="summaryDaysChart"></canvas></div>
+        <div class="chart-wrap-inner" id="daysRegieWrap"   style="display:none;height:auto"><div id="regieChartWrap" style="position:relative"><canvas id="regieChart"></canvas></div></div>
+        <div class="chart-wrap-inner" id="daysTmaWrap"     style="display:none;height:auto"><div id="tmaChartWrap"   style="position:relative"><canvas id="tmaChart"></canvas></div></div>
       </div>
     </div>
 
     <div class="table-wrap" style="margin-top:32px">
       <table>
-        <thead>
+        <thead id="weeksTableHead">
           <tr>
-            <th>Semaine</th>
-            <th>Période</th>
-            <th class="right">Durée (j)</th>
-            <th class="right">TJM</th>
-            <th class="right">TMA</th>
-            <th class="right">Chiffre d'affaire</th>
+            <th class="sortable" data-table="weeks" data-key="week" data-i18n="thWeek">Semaine<span class="sort-icon">↕</span></th>
+            <th class="sortable" data-table="weeks" data-key="start" data-i18n="thPeriod">Période<span class="sort-icon">↕</span></th>
+            <th class="sortable right" data-table="weeks" data-key="duration" data-i18n="thDuration">Durée (j)<span class="sort-icon">↕</span></th>
+            <th class="sortable right" data-table="weeks" data-key="tjm">TJM<span class="sort-icon">↕</span></th>
+            <th class="sortable right" data-table="weeks" data-key="tma">TMA<span class="sort-icon">↕</span></th>
+            <th class="sortable right" data-table="weeks" data-key="revenue" data-i18n="thRevenue">Chiffre d'affaire<span class="sort-icon">↕</span></th>
           </tr>
         </thead>
         <tbody id="weeksTable"></tbody>
@@ -566,23 +860,23 @@
     </div>
   </section>
 
-  <footer>
+  <footer data-i18n="footer">
     Glissez un nouveau fichier à tout moment pour mettre à jour les données.
   </footer>
 
   <section id="clientRatesSection" class="hidden" style="margin-top: 40px;">
     <div class="section-label">
       <span class="num">iv.</span>
-      <span class="name">Clients</span>
-      <span class="meta">TJM / TMA depuis l'onglet Years</span>
+      <span class="name" data-i18n="clients">Clients</span>
+      <span class="meta" data-i18n="clientsMeta">TJM / TMA depuis l'onglet Years</span>
     </div>
     <div class="table-wrap">
       <table>
-        <thead>
+        <thead id="clientsTableHead">
           <tr>
-            <th>Client</th>
-            <th class="right">TJM</th>
-            <th class="right">TMA</th>
+            <th class="sortable" data-table="clients" data-key="activity" data-i18n="thClient">Client<span class="sort-icon">↕</span></th>
+            <th class="sortable right" data-table="clients" data-key="tjm">TJM<span class="sort-icon">↕</span></th>
+            <th class="sortable right" data-table="clients" data-key="tma">TMA<span class="sort-icon">↕</span></th>
           </tr>
         </thead>
         <tbody id="clientRatesTable"></tbody>
@@ -594,30 +888,17 @@
   <section id="diagSection" class="hidden" style="margin-top: 40px;">
     <div class="section-label">
       <span class="num">v.</span>
-      <span class="name">Diagnostic — Onglet Years</span>
+      <span class="name" data-i18n="diagTitle">Diagnostic — Onglet Years</span>
       <span class="meta" id="diagMeta"></span>
     </div>
 
     <div class="clients-wrap" style="margin-bottom:24px">
-      <div class="clients-header">
+      <div class="clients-header" data-i18n="diagDetected">
         Onglets détectés dans le fichier
       </div>
       <div id="diagSheets" style="font-family:'Inter',sans-serif;font-size:13px;color:var(--ink-muted);line-height:2;"></div>
     </div>
 
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Activité (clé normalisée)</th>
-            <th class="right">TJM brut</th>
-            <th class="right">TMA brut</th>
-            <th class="right">Utilisé ?</th>
-          </tr>
-        </thead>
-        <tbody id="diagTable"></tbody>
-      </table>
-    </div>
   </section>
 
 </div>
@@ -626,9 +907,193 @@
 /* ════════════════════════════════════════════════════════════════
    1.  Date helpers
    ════════════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════
+   INTERNATIONALISATION
+   ════════════════════════════════════════════════════════════════ */
+let currentLang = localStorage.getItem('preferredLang') || 'fr';
+
+const TRANS = {
+  fr: {
+    // Static
+    title: "Suivi du chiffre d'affaires",
+    subtitle: "Déposez votre fichier de timesheet annuel pour visualiser l'évolution hebdomadaire du CA.",
+    config: "Configuration", detectedYear: "Année détectée", objectif: "Objectif CA (€)",
+    fileSection: "Fichier de timesheet",
+    dropPrimary: "Déposez 1 ou 2 fichiers ici",
+    dropSecondary: "ou <span class=\"browse\">parcourir</span> · 1 fichier = année en cours · 2 fichiers = comparaison N / N-1",
+    browse: "parcourir",
+    results: "Résultats",
+    chartCA: "CA hebdomadaire", chartProjection: "CA cumulé vs Objectif & Projection",
+    chartInternal: "Jours internes par semaine", chartBilling: "Taux de facturation",
+    chartMonth: "CA par mois", chartTopClients: "Top clients — CA généré",
+    chartRegie: "Jours passés en Régie — par mois et activité",
+    chartTMA: "Jours passés en TMA — par mois et activité",
+    chartSummaryDays: "Jours facturables — Régie & TMA par mois",
+    chartSummaryDaysShort: "Facturables", chartRegieShort: "Régie", chartTMAShort: "TMA",
+    moreInfo: "+ d'info", lessInfo: "− d'info",
+    week: "Semaine", month: "Mois", total: "Total",
+    thWeek: "Semaine", thPeriod: "Période", thDuration: "Durée (j)", thRevenue: "Chiffre d'affaire", thClient: "Client",
+    footer: "Glissez un nouveau fichier à tout moment pour mettre à jour les données.",
+    clients: "Clients", clientsMeta: "TJM / TMA depuis l'onglet Years",
+    diagTitle: "Diagnostic — Onglet Years",
+    // Dynamic
+    statCA: "CA cumulé", statAvg: "Moyenne hebdo", statTjm: "TJM moyen",
+    statTma: "TMA moyen", statBest: "Meilleure semaine", statDays: "Jours travaillés",
+    onWeeks: (n) => `sur ${n} semaine${n>1?'s':''}`, perWeek: "par semaine",
+    weightedDays: (d) => `pondéré sur ${d} jours`, cumDays: "jours cumulés",
+    dsCaReal: (y) => `CA cumulé ${y}`, dsObjectif: (v) => `Objectif (${v})`,
+    dsProjection: "Projection", dsAbsence: "Congés / Absences", dsInternal: "Jours internes",
+    dsBillingRate: (y) => `Taux ${y}`, dsCaMonth: (y) => `CA ${y}`,
+    dsTopCa: (y) => `CA ${y}`, totalYear: "Total année",
+    dsWeeklyTarget: 'Médiane cible',
+    dsMonthlyTarget: 'Objectif mensuel',
+    dsRecalcWeekly: 'Cible recalculée',
+    dsRecalcMonthly: 'Cible recalculée',
+    ttAbsenceDays: (v) => `  ${v} j absences`, ttBilledPct: (v, lbl) => `  ${lbl} : ${v} %`,
+    ttNoData: "Aucune donnée",
+    statusLoading: (n) => `Lecture de ${n} fichier(s)…`,
+    statusOk1: (n, y) => `${n} semaine(s) chargée(s) avec succès (${y}).`,
+    statusOk2: (n1, y1, n2, y2) => `${n1} semaine(s) chargée(s) (${y1}) + ${n2} sem. (${y2}).`,
+    statusEmpty: "Aucun onglet de semaine avec données trouvé.",
+    statusError: (e) => `Impossible de lire le fichier : ${e}`,
+    loadedOne: (y) => `<strong style="color:var(--good)">✓ ${y} chargé</strong> · redéposer pour recharger ou ajouter N-1`,
+    loadedTwo: (y1, y2) => `<strong style="color:var(--good)">✓ ${y1} + ${y2} chargés</strong> · redéposer pour recharger`,
+    diagSheets: (n) => `${n} onglet(s) dans le fichier`,
+    diagDetected: "Onglets détectés dans le fichier",
+    noClientRates: "Aucun TJM/TMA client trouvé dans l'onglet Years.",
+    monthNames: ['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'],
+    // Monthly performance
+    chartMonthPerf: "Objectifs mensuels — Succès & Échecs",
+    thMpMonth: "Mois", thMpCa: "CA mensuel", thMpTarget: "Objectif mensuel",
+    thMpRatio: "Ratio", thMpStatus: "Sélection",
+    mpSuccess: "SUCCESS", mpFailed: "FAILED",
+    mpSumLabel: "Total CA", mpAvgLabel: "Ratio moyen",
+    mpSuccessCount: (n) => `${n} succès`, mpFailedCount: (n) => `${n} échec${n>1?'s':''}`,
+    mpNoTarget: "Définissez un objectif pour voir les résultats",
+    // week mode columns
+    thMpWeek: "Semaine", thMpPeriod: "Période",
+    thMpCaWeek: "CA semaine", thMpTargetWeek: "Objectif hebdo",
+    // month mode columns
+    thMpMonth: "Mois", thMpCa: "CA mensuel", thMpTarget: "Objectif mensuel",
+    thMpRatio: "Ratio", thMpStatus: "Sélection",
+  },
+  en: {
+    title: "Revenue Tracker",
+    subtitle: "Drop your annual timesheet file to visualise weekly revenue trends.",
+    config: "Configuration", detectedYear: "Detected Year", objectif: "Revenue Target (€)",
+    fileSection: "Timesheet File",
+    dropPrimary: "Drop 1 or 2 files here",
+    dropSecondary: "or <span class=\"browse\">browse</span> · 1 file = current year · 2 files = N / N-1 comparison",
+    browse: "browse",
+    results: "Results",
+    chartCA: "Weekly Revenue", chartProjection: "Cumulative Revenue vs Target & Projection",
+    chartInternal: "Internal Days per Week", chartBilling: "Billing Rate",
+    chartMonth: "Monthly Revenue", chartTopClients: "Top Clients — Revenue Generated",
+    chartRegie: "Days in Fixed-Price — by month and activity",
+    chartTMA: "Days in Maintenance — by month and activity",
+    chartSummaryDays: "Billable Days — Fixed-Price & Maintenance per Month",
+    chartSummaryDaysShort: "Billable", chartRegieShort: "Fixed-Price", chartTMAShort: "Maintenance",
+    moreInfo: "+ details", lessInfo: "− details",
+    week: "Week", month: "Month", total: "Total",
+    thWeek: "Week", thPeriod: "Period", thDuration: "Duration (d)", thRevenue: "Revenue", thClient: "Client",
+    footer: "Drop a new file at any time to refresh the data.",
+    clients: "Clients", clientsMeta: "Daily/Monthly rates from the Years tab",
+    diagTitle: "Diagnostic — Years Tab",
+    statCA: "Total Revenue", statAvg: "Weekly Average", statTjm: "Avg. Daily Rate",
+    statTma: "Avg. Monthly Rate", statBest: "Best Week", statDays: "Days Worked",
+    onWeeks: (n) => `over ${n} week${n>1?'s':''}`, perWeek: "per week",
+    weightedDays: (d) => `weighted over ${d} days`, cumDays: "cumulative days",
+    dsCaReal: (y) => `Revenue ${y}`, dsObjectif: (v) => `Target (${v})`,
+    dsProjection: "Projection", dsAbsence: "Leave / Absence", dsInternal: "Internal Days",
+    dsBillingRate: (y) => `Rate ${y}`, dsCaMonth: (y) => `Revenue ${y}`,
+    dsTopCa: (y) => `Revenue ${y}`, totalYear: "Full Year",
+    dsWeeklyTarget: 'Weekly target',
+    dsMonthlyTarget: 'Monthly target',
+    dsRecalcWeekly: 'Adjusted target',
+    dsRecalcMonthly: 'Adjusted target',
+    ttWeek: (n) => `Week ${n}`, ttInternalDays: (v) => `  ${v} d internal`,
+    ttAbsenceDays: (v) => `  ${v} d leave`, ttBilledPct: (v, lbl) => `  ${lbl}: ${v}%`,
+    ttNoData: "No data",
+    statusLoading: (n) => `Reading ${n} file(s)…`,
+    statusOk1: (n, y) => `${n} week(s) loaded successfully (${y}).`,
+    statusOk2: (n1, y1, n2, y2) => `${n1} week(s) loaded (${y1}) + ${n2} wks (${y2}).`,
+    statusEmpty: "No week tabs with data found.",
+    statusError: (e) => `Cannot read file: ${e}`,
+    loadedOne: (y) => `<strong style="color:var(--good)">✓ ${y} loaded</strong> · drop again to reload or add N-1`,
+    loadedTwo: (y1, y2) => `<strong style="color:var(--good)">✓ ${y1} + ${y2} loaded</strong> · drop again to reload`,
+    diagSheets: (n) => `${n} tab(s) in the file`,
+    diagDetected: "Tabs detected in the file",
+    noClientRates: "No client rates (TJM/TMA) found in the Years tab.",
+    monthNames: ['Jan.','Feb.','Mar.','Apr.','May','Jun.','Jul.','Aug.','Sep.','Oct.','Nov.','Dec.'],
+    // Monthly performance
+    chartMonthPerf: "Monthly Targets — Success & Failures",
+    thMpMonth: "Month", thMpCa: "Monthly Revenue", thMpTarget: "Monthly Target",
+    thMpRatio: "Ratio", thMpStatus: "Status",
+    mpSuccess: "SUCCESS", mpFailed: "FAILED",
+    mpSumLabel: "Total Revenue", mpAvgLabel: "Avg. ratio",
+    mpSuccessCount: (n) => `${n} success${n>1?'es':''}`, mpFailedCount: (n) => `${n} failure${n>1?'s':''}`,
+    mpNoTarget: "Set a target to see results",
+    // week mode columns
+    thMpWeek: "Week", thMpPeriod: "Period",
+    thMpCaWeek: "Weekly Revenue", thMpTargetWeek: "Weekly Target",
+    // month mode columns
+    thMpMonth: "Month", thMpCa: "Monthly Revenue", thMpTarget: "Monthly Target",
+    thMpRatio: "Ratio", thMpStatus: "Status",
+  }
+};
+
+function t(key, ...args) {
+  const val = TRANS[currentLang][key] ?? TRANS.fr[key] ?? key;
+  return typeof val === 'function' ? val(...args) : val;
+}
+
+function applyLang(lang) {
+  currentLang = lang;
+  localStorage.setItem('preferredLang', lang);
+
+  const btn = document.getElementById('langToggleBtn');
+  if (btn) {
+    if (lang === 'fr') {
+      btn.innerHTML = `<svg width="22" height="15" viewBox="0 0 20 14" xmlns="http://www.w3.org/2000/svg">
+        <rect width="7" height="14" fill="#002395"/>
+        <rect x="7" width="6" height="14" fill="#fff"/>
+        <rect x="13" width="7" height="14" fill="#ED2939"/>
+      </svg>`;
+      btn.title = 'Switch to English';
+    } else {
+      btn.innerHTML = `<svg width="22" height="15" viewBox="0 0 60 42" xmlns="http://www.w3.org/2000/svg">
+        <rect width="60" height="42" fill="#012169"/>
+        <path d="M0,0 L60,42 M60,0 L0,42" stroke="#fff" stroke-width="8"/>
+        <path d="M0,0 L60,42 M60,0 L0,42" stroke="#C8102E" stroke-width="5"/>
+        <path d="M30,0 V42 M0,21 H60" stroke="#fff" stroke-width="14"/>
+        <path d="M30,0 V42 M0,21 H60" stroke="#C8102E" stroke-width="8"/>
+      </svg>`;
+      btn.title = 'Passer en français';
+    }
+  }
+  // Update all data-i18n elements
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.dataset.i18n;
+    const val = t(key);
+    if (el.tagName === 'INPUT') { el.placeholder = val; }
+    else if (key === 'dropSecondary') { el.innerHTML = val; }
+    else if (key.startsWith('th')) {
+      // Table headers — keep sort icon
+      const icon = el.querySelector('.sort-icon');
+      el.childNodes[0].textContent = typeof val === 'string' ? val : t(key);
+      if (icon) el.appendChild(icon);
+    }
+    else { el.textContent = val; }
+  });
+  document.title = t('title');
+  if (lastEnriched) renderAll();
+}
+
 const DAY_NAMES = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
-const MONTH_NAMES = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin',
+const MONTH_NAMES_FR = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin',
                      'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+// Accessor always returns current-language month names
+function getMonthNames() { return t('monthNames'); }
 
 /**
  * Returns { start, end } Date objects for week N of given year.
@@ -653,11 +1118,11 @@ function getWeekDates(year, weekNumber) {
 }
 
 function fmtDate(d) {
-  return `${d.getDate()} ${MONTH_NAMES[d.getMonth()]}`;
+  return `${d.getDate()} ${getMonthNames()[d.getMonth()]}`;
 }
 function fmtRange(start, end) {
   if (start.getMonth() === end.getMonth()) {
-    return `${start.getDate()}–${end.getDate()} ${MONTH_NAMES[end.getMonth()]}`;
+    return `${start.getDate()}–${end.getDate()} ${getMonthNames()[end.getMonth()]}`;
   }
   return `${fmtDate(start)} — ${fmtDate(end)}`;
 }
@@ -670,49 +1135,22 @@ function fmtCurrency(n) {
 /* ════════════════════════════════════════════════════════════════
    2.  Year-hint live update
    ════════════════════════════════════════════════════════════════ */
-const yearInput = document.getElementById('yearInput');
-function updateYearHint() {
-  const y = parseInt(yearInput.value, 10);
-  if (!y || y < 2000) return;
-  const jan1 = new Date(y, 0, 1);
-  document.getElementById('dayOfWeek').textContent = DAY_NAMES[jan1.getDay()];
-  const { start, end } = getWeekDates(y, 1);
-  document.getElementById('week1Range').textContent =
-    start.getDate() === end.getDate()
-      ? `1 ${MONTH_NAMES[0]}`
-      : `${start.getDate()} au ${end.getDate()} ${MONTH_NAMES[end.getMonth()]}`;
-}
-yearInput.addEventListener('input', updateYearHint);
-updateYearHint();
-
 /* ════════════════════════════════════════════════════════════════
    3.  Drag & drop
    ════════════════════════════════════════════════════════════════ */
-const dropzone = document.getElementById('dropzone');
+const dropzone  = document.getElementById('dropzone');
 const fileInput = document.getElementById('fileInput');
-const statusEl = document.getElementById('status');
+const statusEl  = document.getElementById('status');
 
 dropzone.addEventListener('click', () => fileInput.click());
-
-['dragover', 'dragenter'].forEach(ev =>
-  dropzone.addEventListener(ev, e => {
-    e.preventDefault();
-    dropzone.classList.add('drag');
-  })
-);
-['dragleave', 'dragend', 'drop'].forEach(ev =>
-  dropzone.addEventListener(ev, e => {
-    e.preventDefault();
-    dropzone.classList.remove('drag');
-  })
-);
-
+['dragover','dragenter'].forEach(ev => dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.add('drag'); }));
+['dragleave','dragend','drop'].forEach(ev => dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.remove('drag'); }));
 dropzone.addEventListener('drop', e => {
   e.preventDefault();
-  if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+  if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
 });
 fileInput.addEventListener('change', e => {
-  if (e.target.files.length) handleFile(e.target.files[0]);
+  if (e.target.files.length) handleFiles(e.target.files);
 });
 
 /* ════════════════════════════════════════════════════════════════
@@ -723,35 +1161,89 @@ function setStatus(msg, type = '') {
   statusEl.className = 'status ' + type;
 }
 
-function handleFile(file) {
-  const year = parseInt(yearInput.value, 10);
-  if (!year || year < 2000 || year > 2100) {
-    setStatus('Veuillez d\'abord saisir une année valide.', 'error');
-    return;
-  }
+function parseOneFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+        const { weeks, clientRates, yearsLookup, sheetNames, detectedYear } = parseWorkbook(wb);
+        const year = detectedYear || new Date().getFullYear();
+        const enriched = weeks.map(w => { const { start, end } = getWeekDates(year, w.week); return { ...w, start, end }; });
+        resolve({ weeks, enriched, clientRates, yearsLookup, sheetNames, year, fileName: file.name });
+      } catch (err) { reject(err); }
+    };
+    reader.onerror = () => reject(new Error('Erreur de lecture'));
+    reader.readAsArrayBuffer(file);
+  });
+}
 
-  setStatus(`Lecture de « ${file.name} »…`);
+function handleFiles(fileList) {
+  const files = Array.from(fileList).slice(0, 2);
+  setStatus(t('statusLoading', files.length));
 
-  const reader = new FileReader();
-  reader.onload = e => {
-    try {
-      const data = new Uint8Array(e.target.result);
-      const wb   = XLSX.read(data, { type: 'array' });
-      const { weeks, clientRates, yearsLookup, sheetNames } = parseWorkbook(wb);
-      renderDiag(yearsLookup, sheetNames);
-      if (!weeks.length) {
-        setStatus('Aucun onglet de semaine avec données trouvé. Voir diagnostic ci-dessous.', 'error');
-        return;
-      }
-      setStatus(`${weeks.length} semaine(s) chargée(s) avec succès.`, 'success');
-      render(year, weeks, clientRates, file.name);
-    } catch (err) {
-      console.error(err);
-      setStatus('Impossible de lire le fichier : ' + err.message, 'error');
+  Promise.all(files.map(parseOneFile)).then(results => {
+    allData = {};
+    results.forEach(r => { allData[r.year] = r; });
+    activeYear = Math.max(...Object.keys(allData).map(Number));
+
+    // Update year display
+    const years = Object.keys(allData).map(Number).sort((a,b) => b-a);
+    const yearDisplay = document.getElementById('yearDisplay');
+    if (yearDisplay) {
+      yearDisplay.textContent = years.join(' / ');
+      yearDisplay.style.color = 'var(--ink)';
     }
-  };
-  reader.onerror = () => setStatus('Erreur de lecture du fichier.', 'error');
-  reader.readAsArrayBuffer(file);
+
+    // Update dropzone label
+    const lbl = document.getElementById('dropzoneLabel');
+    if (lbl) {
+      if (years.length === 2) {
+        lbl.innerHTML = t('loadedTwo', years[0], years[1]);
+      } else {
+        lbl.innerHTML = t('loadedOne', years[0]);
+      }
+    }
+
+    // Show/hide compare buttons
+    const hasN1 = years.length > 1;
+    document.querySelectorAll('.cmp-btn').forEach(btn => btn.classList.toggle('visible', hasN1));
+    if (!hasN1) { chartCmp = {}; document.querySelectorAll('.cmp-btn').forEach(b => b.classList.remove('active')); }
+
+    // Diag for most recent year
+    const main = allData[activeYear];
+    renderDiag(main.yearsLookup, main.sheetNames, activeYear);
+
+    if (!main.enriched.length) {
+      setStatus(t('statusEmpty'), 'error');
+      return;
+    }
+    const msg = years.length === 2
+      ? t('statusOk2', main.enriched.length, years[0], allData[years[1]].enriched.length, years[1])
+      : t('statusOk1', main.enriched.length, years[0]);
+    setStatus(msg, 'success');
+    renderAll();
+  }).catch(err => {
+    console.error(err);
+    setStatus('Impossible de lire le fichier : ' + err.message, 'error');
+  });
+}
+
+function handleFile(file) { handleFiles([file]); }
+
+function getN1Enriched() {
+  const years = Object.keys(allData).map(Number).sort((a,b) => b-a);
+  if (years.length < 2) return null;
+  return allData[years[1]].enriched;
+}
+
+function renderAll() {
+  const d = allData[activeYear];
+  if (!d) return;
+  lastEnriched = d.enriched;
+  lastYear     = d.year;
+  lastObjectif = Math.max(0, parseInt(document.getElementById('objectifInput')?.value || '0', 10));
+  render(d.year, d.enriched, d.clientRates);
 }
 
 /**
@@ -788,7 +1280,7 @@ function resolveWeekNumber(name, sheetIndex, nonYearsIndex) {
 }
 
 function parseWorkbook(wb) {
-  const yearsLookup = parseYearsLookup(wb);
+  const { lookup: yearsLookup, year: detectedYear } = parseYearsLookup(wb);
   const out = [];
   let nonYearsIndex = 0;
 
@@ -803,10 +1295,10 @@ function parseWorkbook(wb) {
     const sheet = wb.Sheets[name];
     const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null });
 
-    const { duration, revenue, tjm, tma, activities, internalDur } = parseWeekSheet(rows, yearsLookup);
+    const { duration, revenue, tjm, tma, activities, internalDur, absenceDur } = parseWeekSheet(rows, yearsLookup);
     // N'ajouter que les semaines avec au moins un peu de contenu
     if (duration > 0 || revenue > 0) {
-      out.push({ week: weekNum, duration, revenue, tjm, tma, activities, internalDur: internalDur || 0 });
+      out.push({ week: weekNum, duration, revenue, tjm, tma, activities, internalDur: internalDur || 0, absenceDur: absenceDur || 0 });
     }
   }
   out.sort((a, b) => a.week - b.week);
@@ -815,14 +1307,21 @@ function parseWorkbook(wb) {
     .filter(entry => entry && !isInternalClient(entry.activity) && entry.tjm && entry.tma)
     .sort((a, b) => a.activity.localeCompare(b.activity, 'fr', { sensitivity: 'base' }));
 
-  const sheetNames = wb.SheetNames.map((n, i) => ({
-    raw: n,
-    repr: n === '' ? '(vide)' : JSON.stringify(n),
-    isYears: /^years$/i.test(n.trim()),
-    index: i
-  }));
+  let _nonYearsIdx = 0;
+  const sheetNames = wb.SheetNames.map((n, i) => {
+    const isYears = /^years$/i.test(n.trim());
+    const weekNum = isYears ? null : resolveWeekNumber(n, i, _nonYearsIdx);
+    if (!isYears) _nonYearsIdx++;
+    return {
+      raw: n,
+      repr: n === '' ? '(vide)' : JSON.stringify(n),
+      isYears,
+      index: i,
+      weekNum
+    };
+  });
 
-  return { weeks: out, clientRates, yearsLookup, sheetNames };
+  return { weeks: out, clientRates, yearsLookup, sheetNames, detectedYear };
 }
 
 function toNumber(v) {
@@ -844,10 +1343,19 @@ function normalizeKey(value) {
 
 function parseYearsLookup(wb) {
   const yearsName = wb.SheetNames.find(name => /^years$/i.test(name.trim()));
-  if (!yearsName) return {};
+  if (!yearsName) return { lookup: {}, year: null };
 
   const rows = XLSX.utils.sheet_to_json(wb.Sheets[yearsName], { header: 1, defval: null });
   const lookup = {};
+
+  // Detect year from first row (merged header over columns F-J, index 5+)
+  let detectedYear = null;
+  if (rows[0]) {
+    for (const cell of rows[0]) {
+      const v = parseInt(cell, 10);
+      if (v >= 2000 && v <= 2100) { detectedYear = v; break; }
+    }
+  }
 
   // Extrait la valeur numérique d'une cellule de type "TJM : 925" ou "TMA : 6 417"
   // Le \xa0 est l'espace insécable utilisé comme séparateur de milliers
@@ -907,13 +1415,14 @@ function parseYearsLookup(wb) {
     // car elle a déjà été traitée dans le cas TMA ci-dessus via nextRow
   }
 
-  return lookup;
+  return { lookup, year: detectedYear };
 }
 
 function parseWeekSheet(rows, yearsLookup) {
   let duration = 0;
   let revenue  = 0;
-  let internalDur = 0;   // ← jours non-facturables (absences, admin, formation)
+  let internalDur = 0;   // ← jours non-facturables hors absences (admin, formation…)
+  let absenceDur  = 0;   // ← jours d'absence (Congés, RTT, Jours fériés…)
   let weightedTjm = 0, weightedTjmDays = 0;
   let weightedTma = 0, weightedTmaDays = 0;
   const activities = []; // ← détail par activité pour les graphiques jours
@@ -1028,8 +1537,13 @@ function parseWeekSheet(rows, yearsLookup) {
       if (rowDur > 0 && rowTjm > 0) { weightedTjm += rowTjm * rowDur; weightedTjmDays += rowDur; }
       // Facturable → graphiques clients/régie
       if (rowDur > 0 && rowTjm > 0) activities.push({ name: activity, tmaDur: 0, tjmDur: rowDur, ca: actCaFlat });
-      // Non-facturable → jours internes
-      if (rowDur > 0 && !rowTjm) internalDur += rowDur;
+      // Non-facturable → congés (Type = "Absence") ou jours internes
+      if (rowDur > 0 && !rowTjm) {
+        const typeCell = row[3];
+        const isAbsence = typeCell && normalizeKey(String(typeCell)).includes('absence');
+        if (isAbsence) absenceDur += rowDur;
+        else           internalDur += rowDur;
+      }
     }
     // label === 'TJM' seul → déjà traité dans le cas TMA via nextRow
   }
@@ -1038,6 +1552,7 @@ function parseWeekSheet(rows, yearsLookup) {
     duration,
     revenue,
     internalDur,
+    absenceDur,
     tjm: weightedTjmDays ? weightedTjm / weightedTjmDays : 0,
     tma: weightedTmaDays ? weightedTma / weightedTmaDays : 0,
     activities
@@ -1050,12 +1565,24 @@ function parseWeekSheet(rows, yearsLookup) {
 let chart = null;
 let chartMonth = null;
 let currentClientRates = [];
+let lastEnriched = null;
+let lastYear     = null;
+let lastObjectif = null;
+let weeksSort   = { key: 'week', dir: 'asc' };
+let clientsSort = { key: 'activity', dir: 'asc' };
+let billingRateMode = 'week';
+let chartBillingRate = null;
+
+// Multi-year support
+let allData     = {};   // { year: { enriched, clientRates, year } }
+let activeYear  = null; // most recent year loaded
+let chartCmp    = {};   // { chartId: boolean } — per-chart N-1 toggle state
 const clientRatesTable = document.getElementById('clientRatesTable');
 const clientRatesSection = document.getElementById('clientRatesSection');
 const themeToggleBtn = document.getElementById('themeToggleBtn');
 
 /* ─── Diagnostic Years ───────────────────────────────────────── */
-function renderDiag(yearsLookup, sheetNames) {
+function renderDiag(yearsLookup, sheetNames, year) {
   const diagSection = document.getElementById('diagSection');
   const diagMeta    = document.getElementById('diagMeta');
   const diagSheets  = document.getElementById('diagSheets');
@@ -1066,45 +1593,22 @@ function renderDiag(yearsLookup, sheetNames) {
 
   // ── Liste des onglets ────────────────────────────────────────
   const totalSheets = sheetNames.length;
-  diagMeta.textContent = `${totalSheets} onglet(s) dans le fichier`;
+  diagMeta.textContent = t('diagSheets', totalSheets);
   diagSheets.innerHTML = sheetNames.map(s => {
     const badge = s.isYears
       ? `<span style="color:var(--accent);font-weight:600">[Years]</span>`
       : `<span style="color:var(--good);font-weight:600">[semaine]</span>`;
-    return `${badge} index&nbsp;${s.index} → nom brut&nbsp;: <code style="background:var(--bg-soft);padding:1px 6px;border-radius:3px">${s.repr}</code>`;
+
+    let datePart = '';
+    if (!s.isYears && s.weekNum != null && year) {
+      try {
+        const { start, end } = getWeekDates(year, s.weekNum);
+        datePart = ` <span style="color:var(--ink-faint);font-size:12px">(${fmtRange(start, end)})</span>`;
+      } catch (e) { /* ignore */ }
+    }
+
+    return `${badge} index&nbsp;${s.index} → nom brut&nbsp;: <code style="background:var(--bg-soft);padding:1px 6px;border-radius:3px">${s.repr}</code>${datePart}`;
   }).join('<br>');
-
-  // ── Table activités ──────────────────────────────────────────
-  // Filtre : TJM != 0 OU TMA != 0
-  const entries = Object.values(yearsLookup)
-    .filter(e => e && (e.tjm !== 0 || e.tma !== 0))
-    .sort((a, b) => a.activity.localeCompare(b.activity, 'fr', { sensitivity: 'base' }));
-
-  if (!entries.length) {
-    diagTable.innerHTML = `
-      <tr><td colspan="4" style="color:var(--accent);font-style:italic;padding:16px">
-        Aucune activité avec TJM ou TMA non-nul trouvée dans l'onglet Years.<br>
-        Vérifiez que l'onglet se nomme bien <strong>Years</strong> et que les colonnes contiennent "Activit", "TJM", "TMA".
-      </td></tr>`;
-    return;
-  }
-
-  diagTable.innerHTML = entries.map(e => {
-    const hasInternal = isInternalClient(e.activity);
-    const used = !hasInternal && (e.tjm || e.tma);
-    return `
-      <tr>
-        <td>${e.activity}
-          <br><span style="font-size:11px;color:var(--ink-faint)">${normalizeKey(e.activity)}</span>
-        </td>
-        <td class="right">${e.tjm ? fmtCurrency(e.tjm) : '<span style="color:var(--ink-faint)">—</span>'}</td>
-        <td class="right">${e.tma ? e.tma.toLocaleString('fr-FR', { maximumFractionDigits: 3 }) : '<span style="color:var(--ink-faint)">—</span>'}</td>
-        <td class="right">${used
-          ? '<span style="color:var(--good);font-weight:600">✓ oui</span>'
-          : '<span style="color:var(--accent)">' + (hasInternal ? 'interne (ignoré)' : '—') + '</span>'
-        }</td>
-      </tr>`;
-  }).join('');
 }
 
 function applyTheme(theme) {
@@ -1116,6 +1620,8 @@ function applyTheme(theme) {
     themeToggleBtn.title = isDark ? 'Mode clair' : 'Mode sombre';
   }
   localStorage.setItem('preferredTheme', theme);
+  // Redessine les graphiques avec les bonnes couleurs du thème
+  if (lastEnriched) renderAll();
 }
 
 function loadTheme() {
@@ -1131,6 +1637,14 @@ if (themeToggleBtn) {
   });
 }
 
+// ── Language toggle ───────────────────────────────────────────
+const langToggleBtn = document.getElementById('langToggleBtn');
+if (langToggleBtn) {
+  langToggleBtn.addEventListener('click', () => {
+    applyLang(currentLang === 'fr' ? 'en' : 'fr');
+  });
+}
+applyLang(currentLang); // apply saved preference on load
 loadTheme();
 
 function updateClientRatesPanel(clientRates) {
@@ -1142,33 +1656,75 @@ function updateClientRatesPanel(clientRates) {
 }
 
 function renderClientRates(clientRates) {
-  if (!clientRates.length) {
-    const emptyRow = `
-      <tr>
-        <td colspan="3" class="right">Aucun TJM/TMA client trouvé dans l'onglet Years.</td>
-      </tr>
-    `;
-    if (clientRatesTable) clientRatesTable.innerHTML = emptyRow;
+  currentClientRates = clientRates || currentClientRates;
+  const rates = [...currentClientRates];
+
+  if (!rates.length) {
+    if (clientRatesTable) clientRatesTable.innerHTML = `
+      <tr><td colspan="3" class="right">${t('noClientRates')}</td></tr>`;
     return;
   }
 
-  const rows = clientRates.map(rate => `
+  // Sort
+  rates.sort((a, b) => {
+    const va = a[clientsSort.key] ?? '';
+    const vb = b[clientsSort.key] ?? '';
+    const cmp = typeof va === 'string' ? va.localeCompare(vb, 'fr', { sensitivity: 'base' }) : va - vb;
+    return clientsSort.dir === 'asc' ? cmp : -cmp;
+  });
+
+  // Update header indicators
+  document.querySelectorAll('#clientsTableHead th').forEach(th => {
+    th.classList.toggle('active', th.dataset.key === clientsSort.key);
+    const icon = th.querySelector('.sort-icon');
+    if (icon) icon.textContent = th.dataset.key === clientsSort.key ? (clientsSort.dir === 'asc' ? '↑' : '↓') : '↕';
+  });
+
+  const rows = rates.map(rate => `
     <tr>
       <td>${rate.activity}</td>
       <td class="right">${fmtCurrency(rate.tjm)}</td>
-      <td class="right">${rate.tma.toLocaleString('fr-FR', { maximumFractionDigits: 3 })}</td>
+      <td class="right">${fmtCurrency(rate.tma)}</td>
     </tr>
   `).join('');
 
   if (clientRatesTable) clientRatesTable.innerHTML = rows;
 }
 
-function render(year, weeks, clientRates, fileName) {
-  const enriched = weeks.map(w => {
-    const { start, end } = getWeekDates(year, w.week);
-    return { ...w, start, end };
+function renderWeeksTable(data) {
+  const rows = [...(data || lastEnriched || [])];
+
+  rows.sort((a, b) => {
+    let va = a[weeksSort.key];
+    let vb = b[weeksSort.key];
+    // Date comparison via timestamp
+    if (va instanceof Date) va = va.getTime();
+    if (vb instanceof Date) vb = vb.getTime();
+    va = va ?? 0; vb = vb ?? 0;
+    const cmp = typeof va === 'string' ? va.localeCompare(vb, 'fr', { sensitivity: 'base' }) : va - vb;
+    return weeksSort.dir === 'asc' ? cmp : -cmp;
   });
 
+  // Update header indicators
+  document.querySelectorAll('#weeksTableHead th').forEach(th => {
+    th.classList.toggle('active', th.dataset.key === weeksSort.key);
+    const icon = th.querySelector('.sort-icon');
+    if (icon) icon.textContent = th.dataset.key === weeksSort.key ? (weeksSort.dir === 'asc' ? '↑' : '↓') : '↕';
+  });
+
+  document.getElementById('weeksTable').innerHTML = rows.map(w => `
+    <tr>
+      <td class="week-num">S${w.week}</td>
+      <td class="dates">${fmtRange(w.start, w.end)}</td>
+      <td class="right">${w.duration.toLocaleString('fr-FR', { maximumFractionDigits: 4 })}</td>
+      <td class="right">${w.tjm ? fmtCurrency(w.tjm) : '-'}</td>
+      <td class="right">${w.tma ? fmtCurrency(w.tma) : '-'}</td>
+      <td class="right amount">${fmtCurrency(w.revenue)}</td>
+    </tr>
+  `).join('');
+}
+
+function render(year, enriched, clientRates) {
   // ── Stats ──────────────────────────────────────────────────
   const totalCA = enriched.reduce((s, w) => s + w.revenue, 0);
   const avgCA   = totalCA / enriched.length;
@@ -1181,62 +1737,69 @@ function render(year, weeks, clientRates, fileName) {
 
   document.getElementById('stats').innerHTML = `
     <div class="stat">
-      <div class="label">CA cumulé</div>
+      <div class="label">${t('statCA')}</div>
       <div class="value accent">${fmtCurrency(totalCA)}</div>
-      <div class="sub">sur ${enriched.length} semaine${enriched.length > 1 ? 's' : ''}</div>
+      <div class="sub">${t('onWeeks', enriched.length)}</div>
     </div>
     <div class="stat">
-      <div class="label">Moyenne hebdo</div>
+      <div class="label">${t('statAvg')}</div>
       <div class="value">${fmtCurrency(avgCA)}</div>
-      <div class="sub">par semaine</div>
+      <div class="sub">${t('perWeek')}</div>
     </div>
     <div class="stat">
-      <div class="label">TJM moyen</div>
+      <div class="label">${t('statTjm')}</div>
       <div class="value">${fmtCurrency(avgTjm)}</div>
-      <div class="sub">pondéré sur ${totalDays.toLocaleString('fr-FR')} jours</div>
+      <div class="sub">${t('weightedDays', totalDays.toLocaleString('fr-FR'))}</div>
     </div>
     <div class="stat">
-      <div class="label">TMA moyen</div>
-      <div class="value">${avgTma.toLocaleString('fr-FR', { maximumFractionDigits: 3 })}</div>
-      <div class="sub">pondéré sur ${totalDays.toLocaleString('fr-FR')} jours</div>
+      <div class="label">${t('statTma')}</div>
+      <div class="value">${fmtCurrency(avgTma)}</div>
+      <div class="sub">${t('weightedDays', totalDays.toLocaleString('fr-FR'))}</div>
     </div>
     <div class="stat">
-      <div class="label">Meilleure semaine</div>
+      <div class="label">${t('statBest')}</div>
       <div class="value">S${best.week}</div>
       <div class="sub">${fmtCurrency(best.revenue)} · ${fmtRange(best.start, best.end)}</div>
     </div>
     <div class="stat">
-      <div class="label">Jours travaillés</div>
+      <div class="label">${t('statDays')}</div>
       <div class="value">${totalDays.toLocaleString('fr-FR')}</div>
-      <div class="sub">jours cumulés</div>
+      <div class="sub">${t('cumDays')}</div>
     </div>
   `;
 
   // ── Meta ───────────────────────────────────────────────────
-  document.getElementById('resultsMeta').textContent = `${fileName} · ${year}`;
+  document.getElementById('resultsMeta').textContent = `${year}`;
   updateClientRatesPanel(clientRates);
 
   // ── Table ──────────────────────────────────────────────────
-  document.getElementById('weeksTable').innerHTML = enriched.map(w => `
-    <tr>
-      <td class="week-num">S${w.week}</td>
-      <td class="dates">${fmtRange(w.start, w.end)}</td>
-      <td class="right">${w.duration.toLocaleString('fr-FR', { maximumFractionDigits: 4 })}</td>
-      <td class="right">${w.tjm ? fmtCurrency(w.tjm) : '-'}</td>
-      <td class="right">${w.tma ? w.tma.toLocaleString('fr-FR', { maximumFractionDigits: 3 }) : '-'}</td>
-      <td class="right amount">${fmtCurrency(w.revenue)}</td>
-    </tr>
-  `).join('');
+  renderWeeksTable(enriched);
 
-  // ── Chart ──────────────────────────────────────────────────
+  // ── Charts ─────────────────────────────────────────────────
   const objectif = Math.max(0, parseInt(document.getElementById('objectifInput')?.value || '0', 10));
-  drawChart(enriched);
-  drawProjectionChart(enriched, objectif, year);
-  drawInternalDaysChart(enriched);
-  drawMonthChart(year, enriched);
-  drawTopClientsChart(enriched);
-  drawActivityDaysChart('regieChart', year, enriched, 'tjm');
-  drawActivityDaysChart('tmaChart',   year, enriched, 'tma');
+  lastEnriched = enriched;
+  lastYear     = year;
+  lastObjectif = objectif;
+  const n1 = getN1Enriched();
+  // Revenue block: show the currently active view's chart only
+  const monthWrap = document.getElementById('revenueMonthWrap');
+  const weekWrap  = document.getElementById('revenueWeekWrap');
+  if (monthWrap) monthWrap.style.display = revenueView === 'month' ? '' : 'none';
+  if (weekWrap)  weekWrap.style.display  = revenueView === 'week'  ? '' : 'none';
+  syncRevenueViewBtns();
+  drawChart(enriched, chartCmp['caChart'] ? n1 : null);
+  drawProjectionChart(enriched, objectif, year, chartCmp['projectionChart'] ? n1 : null);
+  drawInternalDaysChart(enriched, chartCmp['internalChart'] ? n1 : null);
+  drawBillingRateChart(enriched, billingRateMode, chartCmp['billingRateChart'] ? n1 : null);
+  drawMonthChart(year, enriched, chartCmp['caMonthChart'] ? n1 : null);
+  drawTopClientsChart(enriched, chartCmp['topClientsChart'] ? n1 : null);
+  drawSummaryDaysChart(year, enriched, chartCmp['summaryDaysChart'] ? n1 : null);
+  drawActivityDaysChart('regieChart', year, enriched, 'tjm', chartCmp['regieChart'] ? n1 : null);
+  drawActivityDaysChart('tmaChart',   year, enriched, 'tma', chartCmp['tmaChart']   ? n1 : null);
+  renderMonthlyPerformance(enriched, objectif);
+
+  // Sync days block view state on reload
+  syncDaysViewBtns();
 
   const results = document.getElementById('results');
   if (results) {
@@ -1249,62 +1812,124 @@ function render(year, weeks, clientRates, fileName) {
   }
 }
 
-function drawChart(weeks) {
+function drawChart(weeks, weeksN1) {
   const ctx = document.getElementById('caChart').getContext('2d');
   if (chart) chart.destroy();
 
-  const labels = weeks.map(w => `S${w.week}`);
-  const data   = weeks.map(w => w.revenue);
-  const ranges = weeks.map(w => fmtRange(w.start, w.end));
+  const labels = ['', ...weeks.map(w => `S${w.week}`)];
+  const data   = [0, ...weeks.map(w => w.revenue)];
+  const weeklyTarget = lastObjectif > 0 ? parseFloat((lastObjectif / 52).toFixed(2)) : null;
+  const ranges = ['', ...weeks.map(w => fmtRange(w.start, w.end))];
 
-  // Read CSS vars
-  const cs = getComputedStyle(document.documentElement);
+  const cs = getComputedStyle(document.body);
   const accent  = cs.getPropertyValue('--accent').trim();
   const ink     = cs.getPropertyValue('--ink').trim();
   const muted   = cs.getPropertyValue('--ink-muted').trim();
   const line    = cs.getPropertyValue('--line').trim();
+  const bg      = cs.getPropertyValue('--bg').trim();
+  const good    = cs.getPropertyValue('--good').trim();
 
-  // Build a soft gradient under the line
   const gradient = ctx.createLinearGradient(0, 0, 0, 380);
   gradient.addColorStop(0, hexToRgba(accent, 0.18));
   gradient.addColorStop(1, hexToRgba(accent, 0));
 
+  const datasets = [{
+    label: t('dsCaReal', lastYear || ''),
+    data,
+    borderColor: accent,
+    borderWidth: 2,
+    backgroundColor: gradient,
+    fill: true,
+    tension: 0.32,
+    pointRadius: 4,
+    pointHoverRadius: 7,
+    pointBackgroundColor: bg,
+    pointBorderColor: accent,
+    pointBorderWidth: 2,
+  }];
+
+  if (weeksN1) {
+    const n1Year = Math.min(...Object.keys(allData).map(Number));
+    datasets.push({
+      label: t('dsCaReal', n1Year),
+      data: [0, ...weeksN1.map(w => w.revenue)],
+      borderColor: muted,
+      borderWidth: 1.5,
+      borderDash: [5, 4],
+      backgroundColor: 'transparent',
+      fill: false,
+      tension: 0.32,
+      pointRadius: 3,
+      pointHoverRadius: 5,
+      pointBackgroundColor: bg,
+      pointBorderColor: muted,
+      pointBorderWidth: 1.5,
+    });
+  }
+
+  if (weeklyTarget) {
+    datasets.push({
+      label: t('dsWeeklyTarget'),
+      data: Array(labels.length).fill(weeklyTarget),
+      borderColor: good,
+      borderWidth: 1.5,
+      borderDash: [8, 4],
+      backgroundColor: 'transparent',
+      fill: false,
+      tension: 0,
+      pointRadius: 0,
+      pointHoverRadius: 0,
+      order: 10,
+    });
+
+    if (lastObjectif > 0) {
+      let cumCA = 0;
+      const recalcData = weeks.map((w) => {
+        cumCA += w.revenue;
+        const remaining = 52 - w.week;
+        if (remaining <= 0) return null;
+        return parseFloat(((lastObjectif - cumCA) / remaining).toFixed(2));
+      });
+      datasets.push({
+        label: t('dsRecalcWeekly'),
+        data: [weeklyTarget, ...recalcData],
+        borderColor: '#ff9100',
+        borderWidth: 1.5,
+        borderDash: [4, 3],
+        backgroundColor: 'transparent',
+        fill: false,
+        tension: 0.2,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        order: 9,
+        spanGaps: false,
+      });
+    }
+  }
+
   chart = new Chart(ctx, {
     type: 'line',
-    data: {
-      labels,
-      datasets: [{
-        label: "Chiffre d'affaire",
-        data,
-        borderColor: accent,
-        borderWidth: 2,
-        backgroundColor: gradient,
-        fill: true,
-        tension: 0.32,
-        pointRadius: 4,
-        pointHoverRadius: 7,
-        pointBackgroundColor: '#fff',
-        pointBorderColor: accent,
-        pointBorderWidth: 2,
-      }]
-    },
+    data: { labels, datasets },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: { display: false },
+        legend: {
+          display: !!(weeksN1 || weeklyTarget),
+          labels: { color: ink, font: { family: 'Inter', size: 12 }, boxWidth: 20, padding: 12 }
+        },
         tooltip: {
           backgroundColor: ink,
-          titleColor: '#f0ebdd',
-          bodyColor: '#f0ebdd',
+          titleColor: bg,
+          bodyColor: bg,
           padding: 12,
           titleFont: { family: 'Fraunces', size: 14, weight: '500' },
           bodyFont:  { family: 'Inter',    size: 13 },
-          displayColors: false,
+          displayColors: !!weeksN1,
           callbacks: {
-            title: items => `Semaine ${weeks[items[0].dataIndex].week} · ${ranges[items[0].dataIndex]}`,
-            label: item => '  ' + fmtCurrency(item.parsed.y)
+            title: items => { const i = items[0].dataIndex - 1; return i >= 0 ? `Semaine ${weeks[i].week} · ${ranges[i+1]}` : ''; },
+            label: item => `  ${item.dataset.label} : ${fmtCurrency(item.parsed.y)}`
           }
         }
       },
@@ -1340,13 +1965,14 @@ function hexToRgba(hex, a) {
 let chartProjection = null;
 let chartInternal   = null;
 let chartTopClients = null;
-let chartRegieDays  = null;
-let chartTmaDays    = null;
+let chartRegieDays    = null;
+let chartTmaDays      = null;
+let chartSummaryDays  = null;
 
 /* ════════════════════════════════════════
    CA CUMULÉ vs OBJECTIF + PROJECTION
    ════════════════════════════════════════ */
-function drawProjectionChart(weeks, objectif, year) {
+function drawProjectionChart(weeks, objectif, year, weeksN1) {
   const ctx = document.getElementById('projectionChart')?.getContext('2d');
   if (!ctx) return;
   if (chartProjection) { chartProjection.destroy(); chartProjection = null; }
@@ -1383,16 +2009,28 @@ function drawProjectionChart(weeks, objectif, year) {
 
   const labels = Array.from({ length: totalWeeks }, (_, i) => `S${i + 1}`);
 
-  const cs    = getComputedStyle(document.documentElement);
+  const cs    = getComputedStyle(document.body);
   const accent = cs.getPropertyValue('--accent').trim();
   const good   = cs.getPropertyValue('--good').trim();
   const ink    = cs.getPropertyValue('--ink').trim();
   const muted  = cs.getPropertyValue('--ink-muted').trim();
   const line   = cs.getPropertyValue('--line').trim();
+  const bg     = cs.getPropertyValue('--bg').trim();
 
   const projectedFinal = lastKnownIdx >= 0
     ? lastCum + weeklyAvg * (totalWeeks - 1 - lastKnownIdx) : 0;
   const onTrack = projectedFinal >= objectif * 0.95;
+
+  const n1Year = weeksN1 ? Math.min(...Object.keys(allData).map(Number)) : null;
+  let realDataN1 = null;
+  if (weeksN1) {
+    let cumN1 = 0;
+    realDataN1 = Array(totalWeeks).fill(null);
+    weeksN1.forEach(w => {
+      cumN1 += w.revenue;
+      if (w.week >= 1 && w.week <= totalWeeks) realDataN1[w.week - 1] = parseFloat(cumN1.toFixed(2));
+    });
+  }
 
   chartProjection = new Chart(ctx, {
     type: 'line',
@@ -1400,7 +2038,7 @@ function drawProjectionChart(weeks, objectif, year) {
       labels,
       datasets: [
         {
-          label: 'CA cumulé réel',
+          label: t('dsCaReal', lastYear || ''),
           data: realData,
           borderColor: accent,
           backgroundColor: hexToRgba(accent, 0.08),
@@ -1412,7 +2050,7 @@ function drawProjectionChart(weeks, objectif, year) {
           spanGaps: false,
         },
         {
-          label: `Objectif (${fmtCurrency(objectif)})`,
+          label: t('dsObjectif', fmtCurrency(objectif)),
           data: objectifData,
           borderColor: good,
           borderWidth: 1.5,
@@ -1422,7 +2060,7 @@ function drawProjectionChart(weeks, objectif, year) {
           tension: 0,
         },
         {
-          label: 'Projection',
+          label: t('dsProjection'),
           data: projData,
           borderColor: accent,
           borderWidth: 1.5,
@@ -1430,7 +2068,20 @@ function drawProjectionChart(weeks, objectif, year) {
           pointRadius: 0,
           fill: false,
           tension: 0,
-        }
+        },
+        ...(realDataN1 ? [{
+          label: t('dsCaReal', n1Year),
+          data: realDataN1,
+          borderColor: muted,
+          backgroundColor: 'transparent',
+          fill: false,
+          borderWidth: 1.5,
+          borderDash: [5, 4],
+          tension: 0.25,
+          pointRadius: 0,
+          pointHoverRadius: 5,
+          spanGaps: false,
+        }] : [])
       ]
     },
     options: {
@@ -1445,8 +2096,8 @@ function drawProjectionChart(weeks, objectif, year) {
         },
         tooltip: {
           backgroundColor: ink,
-          titleColor: '#f0ebdd',
-          bodyColor: '#f0ebdd',
+          titleColor: bg,
+          bodyColor: bg,
           padding: 12,
           titleFont: { family: 'Fraunces', size: 13, weight: '500' },
           bodyFont: { family: 'Inter', size: 12 },
@@ -1507,50 +2158,202 @@ function drawProjectionChart(weeks, objectif, year) {
 /* ════════════════════════════════════════
    JOURS INTERNES PAR SEMAINE
    ════════════════════════════════════════ */
-function drawInternalDaysChart(weeks) {
+function drawInternalDaysChart(weeks, weeksN1) {
   const ctx = document.getElementById('internalChart')?.getContext('2d');
   if (!ctx) return;
   if (chartInternal) { chartInternal.destroy(); chartInternal = null; }
 
-  const labels = weeks.map(w => `S${w.week}`);
-  const data   = weeks.map(w => parseFloat((w.internalDur || 0).toFixed(4)));
+  const labels      = weeks.map(w => `S${w.week}`);
+  const dataInternal = weeks.map(w => parseFloat((w.internalDur || 0).toFixed(4)));
+  const dataAbsence  = weeks.map(w => parseFloat((w.absenceDur  || 0).toFixed(4)));
 
-  const cs    = getComputedStyle(document.documentElement);
+  const cs    = getComputedStyle(document.body);
   const muted = cs.getPropertyValue('--ink-muted').trim();
   const ink   = cs.getPropertyValue('--ink').trim();
   const line  = cs.getPropertyValue('--line').trim();
-  const COLOR = '#a55eea';
+  const bg    = cs.getPropertyValue('--bg').trim();
+
+  const COLOR_INTERNAL = '#a55eea';
+  const COLOR_ABSENCE  = '#e8894a';
+  const n1Year = weeksN1 ? Math.min(...Object.keys(allData).map(Number)) : null;
+
+  const datasets = [
+    { label: t('dsAbsence'), data: dataAbsence, backgroundColor: hexToRgba(COLOR_ABSENCE, 0.75), borderColor: COLOR_ABSENCE, borderWidth: 1, borderRadius: 3, borderSkipped: false, barPercentage: 0.6, stack: 'N' },
+    { label: t('dsInternal'),    data: dataInternal, backgroundColor: hexToRgba(COLOR_INTERNAL, 0.75), borderColor: COLOR_INTERNAL, borderWidth: 1, borderRadius: 3, borderSkipped: false, barPercentage: 0.6, stack: 'N' },
+  ];
+  if (weeksN1) {
+    datasets.push(
+      { label: `Absences ${n1Year}`, data: weeksN1.map(w => parseFloat((w.absenceDur||0).toFixed(4))), backgroundColor: hexToRgba(COLOR_ABSENCE, 0.3), borderColor: hexToRgba(COLOR_ABSENCE, 0.5), borderWidth: 1, borderRadius: 3, borderSkipped: false, barPercentage: 0.6, stack: 'N1' },
+      { label: `Internes ${n1Year}`, data: weeksN1.map(w => parseFloat((w.internalDur||0).toFixed(4))), backgroundColor: hexToRgba(COLOR_INTERNAL, 0.3), borderColor: hexToRgba(COLOR_INTERNAL, 0.5), borderWidth: 1, borderRadius: 3, borderSkipped: false, barPercentage: 0.6, stack: 'N1' }
+    );
+  }
 
   chartInternal = new Chart(ctx, {
     type: 'bar',
-    data: {
-      labels,
-      datasets: [{
-        label: 'Jours internes',
-        data,
-        backgroundColor: hexToRgba(COLOR, 0.75),
-        borderColor: COLOR,
-        borderWidth: 1,
-        borderRadius: 3,
-        borderSkipped: false,
-        barPercentage: 0.6,
-      }]
-    },
+    data: { labels, datasets },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { display: false },
+        legend: { display: true, position: 'top', labels: { color: ink, font: { family: 'Inter', size: 12 }, boxWidth: 14, padding: 16 } },
+        tooltip: {
+          backgroundColor: ink, titleColor: bg, bodyColor: bg, padding: 10,
+          titleFont: { family: 'Fraunces', size: 13 }, bodyFont: { family: 'Inter', size: 12 },
+          callbacks: {
+            title: items => `Semaine ${weeks[items[0].dataIndex]?.week ?? ''}`,
+            label: item => `  ${item.dataset.label} : ${item.parsed.y.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} j`
+          }
+        }
+      },
+      scales: {
+        x: { stacked: true, grid: { display: false }, ticks: { color: muted, font: { family: 'Inter', size: 11 } } },
+        y: { stacked: true, beginAtZero: true, grid: { color: line }, ticks: { color: muted, font: { family: 'Inter', size: 11 }, callback: v => `${v} j` } }
+      },
+      animation: { duration: 700, easing: 'easeOutQuart' }
+    }
+  });
+}
+
+/* ════════════════════════════════════════
+   TAUX DE FACTURATION
+   ════════════════════════════════════════ */
+function drawBillingRateChart(weeks, mode, weeksN1) {
+  mode = mode || billingRateMode;
+  billingRateMode = mode;
+
+  const ctx = document.getElementById('billingRateChart')?.getContext('2d');
+  if (!ctx) return;
+  if (chartBillingRate) { chartBillingRate.destroy(); chartBillingRate = null; }
+
+  const cs    = getComputedStyle(document.body);
+  const ink   = cs.getPropertyValue('--ink').trim();
+  const bg    = cs.getPropertyValue('--bg').trim();
+  const muted = cs.getPropertyValue('--ink-muted').trim();
+  const line  = cs.getPropertyValue('--line').trim();
+  const good  = cs.getPropertyValue('--good').trim();
+  const accent= cs.getPropertyValue('--accent').trim();
+
+  // Update toggle button styles
+  document.querySelectorAll('.billing-toggle').forEach(btn => {
+    const isActive = btn.dataset.mode === mode;
+    btn.style.background     = isActive ? ink   : 'transparent';
+    btn.style.color          = isActive ? bg    : ink;
+    btn.style.borderColor    = isActive ? ink   : cs.getPropertyValue('--line').trim();
+  });
+
+  // Helper: compute rate for a set of weeks
+  function rate(w) {
+    const billable = Math.max(0, w.duration - (w.internalDur || 0) - (w.absenceDur || 0));
+    const workedTotal = w.duration - (w.absenceDur || 0); // hors absences
+    return workedTotal > 0 ? Math.round((billable / workedTotal) * 100) : null;
+  }
+
+  let labels = [], data = [], barColors = [];
+
+  // Helper: compute rate per aggregation mode for any weeks array
+  function computeRates(src) {
+    const d = [], c = [];
+    if (mode === 'week') {
+      src.forEach(w => {
+        const r = rate(w);
+        d.push(r);
+        c.push(r === null ? muted : r >= 90 ? '#00e676' : r >= 70 ? '#ffea00' : r >= 50 ? '#ff9100' : '#ff1744');
+      });
+    } else if (mode === 'month') {
+      const byMonth = {};
+      src.forEach(w => {
+        const m = w.start.getMonth();
+        if (!byMonth[m]) byMonth[m] = { dur: 0, internal: 0, absence: 0 };
+        byMonth[m].dur      += w.duration;
+        byMonth[m].internal += w.internalDur || 0;
+        byMonth[m].absence  += w.absenceDur  || 0;
+      });
+      // Use the labels already set (from main weeks)
+      labels.forEach((_, i) => {
+        const entry = Object.values(byMonth)[i];
+        if (!entry) { d.push(null); c.push(muted); return; }
+        const billable = Math.max(0, entry.dur - entry.internal - entry.absence);
+        const worked   = entry.dur - entry.absence;
+        const r = worked > 0 ? Math.round((billable / worked) * 100) : null;
+        d.push(r);
+        c.push(r === null ? muted : r >= 90 ? '#00e676' : r >= 70 ? '#ffea00' : r >= 50 ? '#ff9100' : '#ff1744');
+      });
+    } else {
+      const tot = src.reduce((acc, w) => { acc.dur += w.duration; acc.internal += w.internalDur||0; acc.absence += w.absenceDur||0; return acc; }, { dur:0, internal:0, absence:0 });
+      const billable = Math.max(0, tot.dur - tot.internal - tot.absence);
+      const worked   = tot.dur - tot.absence;
+      const r = worked > 0 ? Math.round((billable / worked) * 100) : null;
+      d.push(r);
+      c.push(r === null ? muted : r >= 90 ? '#00e676' : r >= 70 ? '#ffea00' : r >= 50 ? '#ff9100' : '#ff1744');
+    }
+    return { d, c };
+  }
+
+  // Build labels from main weeks first
+  if (mode === 'week') {
+    labels = weeks.map(w => `S${w.week}`);
+  } else if (mode === 'month') {
+    const byMonth = {};
+    weeks.forEach(w => { byMonth[w.start.getMonth()] = true; });
+    labels = Object.keys(byMonth).sort((a,b)=>a-b).map(m => getMonthNames()[+m]);
+  } else {
+    labels = [t('totalYear')];
+  }
+
+  const main = computeRates(weeks);
+  data      = main.d;
+  barColors = main.c;
+
+  const n1Year = weeksN1 ? Math.min(...Object.keys(allData).map(Number)) : null;
+  const barPct = weeksN1 ? (mode === 'total' ? 0.15 : 0.45) : (mode === 'total' ? 0.2 : 0.6);
+
+  const datasets = [{
+    label: t('dsBillingRate', lastYear || ''),
+    data,
+    backgroundColor: barColors.map(c => hexToRgba(c, 0.8)),
+    borderColor: barColors,
+    borderWidth: 1,
+    borderRadius: 3,
+    borderSkipped: false,
+    barPercentage: barPct,
+    categoryPercentage: 0.8,
+  }];
+
+  if (weeksN1) {
+    const n1 = computeRates(weeksN1);
+    datasets.push({
+      label: t('dsBillingRate', n1Year),
+      data: n1.d,
+      backgroundColor: n1.c.map(c => hexToRgba(c, 0.35)),
+      borderColor: n1.c.map(c => hexToRgba(c, 0.6)),
+      borderWidth: 1,
+      borderRadius: 3,
+      borderSkipped: false,
+      barPercentage: barPct,
+      categoryPercentage: 0.8,
+    });
+  }
+
+  chartBillingRate = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: !!weeksN1, labels: { color: ink, font: { family: 'Inter', size: 12 }, boxWidth: 14, padding: 14 } },
         tooltip: {
           backgroundColor: ink,
-          titleColor: '#f0ebdd',
-          bodyColor: '#f0ebdd',
+          titleColor: bg,
+          bodyColor: bg,
           padding: 10,
           titleFont: { family: 'Fraunces', size: 13 },
           bodyFont: { family: 'Inter', size: 12 },
+          displayColors: !!weeksN1,
           callbacks: {
-            title: items => `Semaine ${weeks[items[0].dataIndex].week}`,
-            label: item => `  ${item.parsed.y.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} j internes`
+            label: item => item.parsed.y != null
+              ? `  ${item.dataset.label} : ${item.parsed.y} %`
+              : `  ${item.dataset.label} : —`
           }
         }
       },
@@ -1558,12 +2361,9 @@ function drawInternalDaysChart(weeks) {
         x: { grid: { display: false }, ticks: { color: muted, font: { family: 'Inter', size: 11 } } },
         y: {
           beginAtZero: true,
+          max: 100,
           grid: { color: line },
-          ticks: {
-            color: muted,
-            font: { family: 'Inter', size: 11 },
-            callback: v => `${v} j`
-          }
+          ticks: { color: muted, font: { family: 'Inter', size: 11 }, callback: v => `${v} %` }
         }
       },
       animation: { duration: 700, easing: 'easeOutQuart' }
@@ -1574,7 +2374,7 @@ function drawInternalDaysChart(weeks) {
 /* ════════════════════════════════════════
    TOP CLIENTS PAR CA
    ════════════════════════════════════════ */
-function drawTopClientsChart(weeks) {
+function drawTopClientsChart(weeks, weeksN1) {
   const wrap = document.getElementById('topClientsWrap');
   const canvas = document.getElementById('topClientsChart');
   if (!canvas) return;
@@ -1607,43 +2407,71 @@ function drawTopClientsChart(weeks) {
   const data   = sorted.map(([, v]) => parseFloat(v.toFixed(2)));
   const colors = sorted.map((_, i) => PALETTE[i % PALETTE.length]);
 
-  if (wrap) wrap.style.height = Math.max(80, 52 * sorted.length) + 'px';
+  // N-1 data aligned on the same client labels
+  let dataN1 = null;
+  const n1Year = weeksN1 ? Math.min(...Object.keys(allData).map(Number)) : null;
+  if (weeksN1) {
+    const caN1 = {};
+    for (const w of weeksN1) {
+      for (const a of (w.activities || [])) {
+        if (!a.ca) continue;
+        caN1[a.name] = (caN1[a.name] || 0) + a.ca;
+      }
+    }
+    dataN1 = labels.map(name => parseFloat((caN1[name] || 0).toFixed(2)));
+  }
 
-  const cs    = getComputedStyle(document.documentElement);
+  if (wrap) wrap.style.height = Math.max(80, 44 * sorted.length + 40) + 'px';
+
+  const cs    = getComputedStyle(document.body);
   const ink   = cs.getPropertyValue('--ink').trim();
   const muted = cs.getPropertyValue('--ink-muted').trim();
   const line  = cs.getPropertyValue('--line').trim();
+  const bg    = cs.getPropertyValue('--bg').trim();
 
+  const barPct = weeksN1 ? 0.45 : 0.65;
+  const datasets = [{
+    label: t('dsCaReal', lastYear || ''),
+    data,
+    backgroundColor: colors,
+    borderWidth: 0,
+    borderRadius: 3,
+    borderSkipped: false,
+    barPercentage: barPct,
+    categoryPercentage: 0.8,
+  }];
+  if (dataN1) {
+    datasets.push({
+      label: t('dsCaReal', n1Year),
+      data: dataN1,
+      backgroundColor: colors.map(c => hexToRgba(c, 0.35)),
+      borderColor: colors.map(c => hexToRgba(c, 0.6)),
+      borderWidth: 1,
+      borderRadius: 3,
+      borderSkipped: false,
+      barPercentage: barPct,
+      categoryPercentage: 0.8,
+    });
+  }
   chartTopClients = new Chart(ctx, {
     type: 'bar',
-    data: {
-      labels,
-      datasets: [{
-        label: 'CA',
-        data,
-        backgroundColor: colors,
-        borderWidth: 0,
-        borderRadius: 3,
-        borderSkipped: false,
-        barPercentage: 0.65,
-      }]
-    },
+    data: { labels, datasets },
     options: {
       indexAxis: 'y',
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { display: false },
+        legend: { display: !!weeksN1, labels: { color: ink, font: { family: 'Inter', size: 12 }, boxWidth: 14, padding: 14 } },
         tooltip: {
           backgroundColor: ink,
-          titleColor: '#f0ebdd',
-          bodyColor: '#f0ebdd',
+          titleColor: bg,
+          bodyColor: bg,
           padding: 12,
           titleFont: { family: 'Fraunces', size: 13, weight: '500' },
           bodyFont: { family: 'Inter', size: 12 },
-          displayColors: false,
+          displayColors: !!weeksN1,
           callbacks: {
-            label: item => `  ${fmtCurrency(item.parsed.x)}`
+            label: item => `  ${item.dataset.label} : ${fmtCurrency(item.parsed.x)}`
           }
         }
       },
@@ -1668,7 +2496,7 @@ function drawTopClientsChart(weeks) {
         chart.getDatasetMeta(0).data.forEach((bar, i) => {
           const v = data[i];
           if (!v) return;
-          c.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--ink').trim();
+          c.fillStyle = getComputedStyle(document.body).getPropertyValue('--ink').trim();
           c.font = '600 11px Inter, sans-serif';
           c.textAlign = 'left';
           c.textBaseline = 'middle';
@@ -1685,7 +2513,101 @@ function drawTopClientsChart(weeks) {
  * Graphique barres horizontales empilées : jours par mois et par activité.
  * mode = 'tjm' → jours en Régie   |   mode = 'tma' → jours en TMA
  */
-function drawActivityDaysChart(canvasId, year, weeks, mode) {
+/* ════════════════════════════════════════
+   RÉSUMÉ RÉGIE + TMA PAR MOIS
+   ════════════════════════════════════════ */
+function drawSummaryDaysChart(year, weeks, weeksN1) {
+  const ctx = document.getElementById('summaryDaysChart')?.getContext('2d');
+  if (!ctx) return;
+  if (chartSummaryDays) { chartSummaryDays.destroy(); chartSummaryDays = null; }
+
+  const MONTHS_SHORT = getMonthNames();
+  const monthSet = new Set();
+  const byMonth = {};
+
+  for (const w of weeks) {
+    const m = w.start.getMonth();
+    monthSet.add(m);
+    if (!byMonth[m]) byMonth[m] = { tjm: 0, tma: 0 };
+    for (const a of (w.activities || [])) {
+      byMonth[m].tjm += a.tjmDur || 0;
+      byMonth[m].tma += a.tmaDur || 0;
+    }
+  }
+  const sortedMonths = [...monthSet].sort((a, b) => a - b);
+  const labels = sortedMonths.map(m => MONTHS_SHORT[m]);
+
+  const cs    = getComputedStyle(document.body);
+  const ink   = cs.getPropertyValue('--ink').trim();
+  const muted = cs.getPropertyValue('--ink-muted').trim();
+  const line  = cs.getPropertyValue('--line').trim();
+  const bg    = cs.getPropertyValue('--bg').trim();
+
+  const COLOR_TJM = '#5b8df6';
+  const COLOR_TMA = '#50c9a0';
+  const n1Year = weeksN1 ? Math.min(...Object.keys(allData).map(Number)) : null;
+
+  const datasets = [
+    {
+      label: `Régie ${lastYear || ''}`,
+      data: sortedMonths.map(m => parseFloat((byMonth[m]?.tjm || 0).toFixed(2))),
+      backgroundColor: hexToRgba(COLOR_TJM, 0.8),
+      borderColor: COLOR_TJM,
+      borderWidth: 1, borderRadius: 3, borderSkipped: false,
+      barPercentage: weeksN1 ? 0.35 : 0.45, categoryPercentage: 0.85,
+      stack: `N-tjm`,
+    },
+    {
+      label: `TMA ${lastYear || ''}`,
+      data: sortedMonths.map(m => parseFloat((byMonth[m]?.tma || 0).toFixed(2))),
+      backgroundColor: hexToRgba(COLOR_TMA, 0.8),
+      borderColor: COLOR_TMA,
+      borderWidth: 1, borderRadius: 3, borderSkipped: false,
+      barPercentage: weeksN1 ? 0.35 : 0.45, categoryPercentage: 0.85,
+      stack: `N-tma`,
+    },
+  ];
+
+  if (weeksN1) {
+    const byMonthN1 = {};
+    for (const w of weeksN1) {
+      const m = w.start.getMonth();
+      if (!byMonthN1[m]) byMonthN1[m] = { tjm: 0, tma: 0 };
+      for (const a of (w.activities || [])) {
+        byMonthN1[m].tjm += a.tjmDur || 0;
+        byMonthN1[m].tma += a.tmaDur || 0;
+      }
+    }
+    datasets.push(
+      { label: `Régie ${n1Year}`, data: sortedMonths.map(m => parseFloat((byMonthN1[m]?.tjm||0).toFixed(2))), backgroundColor: hexToRgba(COLOR_TJM, 0.35), borderColor: hexToRgba(COLOR_TJM, 0.6), borderWidth: 1, borderRadius: 3, borderSkipped: false, barPercentage: 0.35, categoryPercentage: 0.85, stack: `N1-tjm` },
+      { label: `TMA ${n1Year}`, data: sortedMonths.map(m => parseFloat((byMonthN1[m]?.tma||0).toFixed(2))), backgroundColor: hexToRgba(COLOR_TMA, 0.35), borderColor: hexToRgba(COLOR_TMA, 0.6), borderWidth: 1, borderRadius: 3, borderSkipped: false, barPercentage: 0.35, categoryPercentage: 0.85, stack: `N1-tma` }
+    );
+  }
+
+  chartSummaryDays = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: true, position: 'top', labels: { color: ink, font: { family: 'Inter', size: 12 }, boxWidth: 14, padding: 14 } },
+        tooltip: {
+          backgroundColor: ink, titleColor: bg, bodyColor: bg, padding: 10,
+          titleFont: { family: 'Fraunces', size: 13 }, bodyFont: { family: 'Inter', size: 12 },
+          displayColors: true,
+          callbacks: { label: item => `  ${item.dataset.label} : ${item.parsed.y.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} j` }
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: muted, font: { family: 'Inter', size: 12 } } },
+        y: { beginAtZero: true, grid: { color: line }, ticks: { color: muted, font: { family: 'Inter', size: 11 }, callback: v => `${v} j` } }
+      },
+      animation: { duration: 700, easing: 'easeOutQuart' }
+    }
+  });
+}
+
+function drawActivityDaysChart(canvasId, year, weeks, mode, weeksN1) {
   const canvas = document.getElementById(canvasId);
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
@@ -1693,8 +2615,8 @@ function drawActivityDaysChart(canvasId, year, weeks, mode) {
   if (mode === 'tjm' && chartRegieDays) { chartRegieDays.destroy(); chartRegieDays = null; }
   if (mode === 'tma' && chartTmaDays)   { chartTmaDays.destroy();   chartTmaDays   = null; }
 
-  const MONTHS_SHORT = ['Janv.','Févr.','Mars','Avr.','Mai','Juin',
-                        'Juil.','Août','Sept.','Oct.','Nov.','Déc.'];
+  const MONTHS_SHORT = getMonthNames(); // [
+                        
   const PALETTE = [
     '#5b8df6','#f5a623','#50c9a0','#e06c6c','#c78fff',
     '#4ecdc4','#f78fb3','#45aaf2','#fc5c65','#26de81',
@@ -1728,31 +2650,62 @@ function drawActivityDaysChart(canvasId, year, weeks, mode) {
     }
   }
   const sortedMonths = [...monthSet].sort((a, b) => a - b);
-  const labels = sortedMonths.map(m => `${MONTHS_SHORT[m]} ${year}`);
+  const n1Year = weeksN1 ? Math.min(...Object.keys(allData).map(Number)) : null;
+
+  // If N-1, build N-1 month data and append to labels
+  let monthDataN1 = {}, sortedMonthsN1 = [];
+  if (weeksN1) {
+    const monthSetN1 = new Set();
+    for (const w of weeksN1) {
+      const m = w.start.getMonth();
+      monthSetN1.add(m);
+      if (!monthDataN1[m]) monthDataN1[m] = {};
+      for (const a of (w.activities || [])) {
+        const days = mode === 'tjm' ? a.tjmDur : a.tmaDur;
+        if (days > 0) monthDataN1[m][a.name] = (monthDataN1[m][a.name] || 0) + days;
+      }
+    }
+    sortedMonthsN1 = [...monthSetN1].sort((a, b) => a - b);
+    // Add N-1 activities to allActivities
+    for (const w of weeksN1) {
+      for (const a of (w.activities || [])) {
+        const days = mode === 'tjm' ? a.tjmDur : a.tmaDur;
+        if (days > 0) activitySet.add(a.name);
+      }
+    }
+  }
+  const allActivitiesFull = weeksN1
+    ? [...activitySet].sort((a, b) => a.localeCompare(b, 'fr', { sensitivity: 'base' }))
+    : allActivities;
+
+  const labelsN  = sortedMonths.map(m => `${MONTHS_SHORT[m]} ${year}`);
+  const labelsN1 = weeksN1 ? sortedMonthsN1.map(m => `${MONTHS_SHORT[m]} ${n1Year}`) : [];
+  const labels   = [...labelsN, ...labelsN1];
 
   // 3. Datasets (un par activité)
-  const datasets = allActivities.map((act, i) => ({
+  const datasets = allActivitiesFull.map((act, i) => ({
     label: act,
-    data: sortedMonths.map(m => {
-      const v = (monthData[m] || {})[act] || 0;
-      return v > 0 ? parseFloat(v.toFixed(4)) : 0;
-    }),
-    backgroundColor: PALETTE[i % PALETTE.length],
-    // Pas de borderRadius sur des barres empilées : bug de rendu Chart.js 4
-    // quand des segments à 0 sont adjacents à des segments colorés
+    data: [
+      ...sortedMonths.map(m => { const v = (monthData[m] || {})[act] || 0; return v > 0 ? parseFloat(v.toFixed(4)) : 0; }),
+      ...sortedMonthsN1.map(m => { const v = (monthDataN1[m] || {})[act] || 0; return v > 0 ? parseFloat(v.toFixed(4)) : 0; }),
+    ],
+    backgroundColor: weeksN1
+      ? [...sortedMonths.map(() => PALETTE[i % PALETTE.length]), ...sortedMonthsN1.map(() => hexToRgba(PALETTE[i % PALETTE.length], 0.4))]
+      : PALETTE[i % PALETTE.length],
     borderWidth: 0,
   }));
 
   // 4. Hauteur fixe sur le wrapper, pas sur le canvas
   const wrapperId = mode === 'tjm' ? 'regieChartWrap' : 'tmaChartWrap';
   const wrapper = document.getElementById(wrapperId);
-  const fixedH = Math.max(72, 64 * sortedMonths.length);
+  const fixedH = Math.max(72, 64 * (sortedMonths.length + sortedMonthsN1.length));
   if (wrapper) wrapper.style.height = fixedH + 'px';
 
-  const cs    = getComputedStyle(document.documentElement);
+  const cs    = getComputedStyle(document.body);
   const ink   = cs.getPropertyValue('--ink').trim();
   const muted = cs.getPropertyValue('--ink-muted').trim();
   const line  = cs.getPropertyValue('--line').trim();
+  const bg    = cs.getPropertyValue('--bg').trim();
 
   const instance = new Chart(ctx, {
     type: 'bar',
@@ -1776,8 +2729,8 @@ function drawActivityDaysChart(canvasId, year, weeks, mode) {
         },
         tooltip: {
           backgroundColor: ink,
-          titleColor: '#f0ebdd',
-          bodyColor: '#f0ebdd',
+          titleColor: bg,
+          bodyColor: bg,
           padding: 12,
           titleFont: { family: 'Fraunces', size: 13, weight: '500' },
           bodyFont:  { family: 'Inter', size: 12 },
@@ -1819,7 +2772,7 @@ function drawActivityDaysChart(canvasId, year, weeks, mode) {
         lastMeta.data.forEach((bar, i) => {
           const total = data.datasets.reduce((s, ds) => s + (ds.data[i] || 0), 0);
           if (!total) return;
-          c.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--ink').trim();
+          c.fillStyle = getComputedStyle(document.body).getPropertyValue('--ink').trim();
           c.font = '600 11px Inter, sans-serif';
           c.textAlign  = 'left';
           c.textBaseline = 'middle';
@@ -1837,9 +2790,11 @@ function drawActivityDaysChart(canvasId, year, weeks, mode) {
   else chartTmaDays = instance;
 }
 
-function drawMonthChart(year, weeks) {
+function drawMonthChart(year, weeks, weeksN1) {
   const ctx = document.getElementById('caMonthChart').getContext('2d');
   if (chartMonth) chartMonth.destroy();
+
+  const monthlyTarget = lastObjectif > 0 ? parseFloat((lastObjectif / 12).toFixed(2)) : null;
 
   // Agréger par mois
   const monthTotals = {};
@@ -1849,8 +2804,8 @@ function drawMonthChart(year, weeks) {
     monthTotals[m] = (monthTotals[m] || 0) + w.revenue;
   }
 
-  const MONTHS_FULL = ['Janv.','Févr.','Mars','Avr.','Mai','Juin',
-                       'Juil.','Août','Sept.','Oct.','Nov.','Déc.'];
+  const MONTHS_FULL = getMonthNames(); // [
+                       
 
   // Palette colorée comme l'exemple (12 couleurs distinctes)
   const PALETTE = [
@@ -1860,48 +2815,106 @@ function drawMonthChart(year, weeks) {
   ];
 
   const sortedMonths = Object.keys(monthTotals).map(Number).sort((a, b) => a - b);
-  const labels = sortedMonths.map(m => `${MONTHS_FULL[m]} ${year}`);
-  const data   = sortedMonths.map(m => monthTotals[m]);
-  const colors = sortedMonths.map(m => PALETTE[m % PALETTE.length]);
+  const labels = ['', ...sortedMonths.map(m => MONTHS_FULL[m])];
+  const data   = [0, ...sortedMonths.map(m => monthTotals[m])];
+  const colors = [null, ...sortedMonths.map(m => PALETTE[m % PALETTE.length])];
 
-  const cs    = getComputedStyle(document.documentElement);
+  const cs    = getComputedStyle(document.body);
   const ink   = cs.getPropertyValue('--ink').trim();
   const muted = cs.getPropertyValue('--ink-muted').trim();
   const line  = cs.getPropertyValue('--line').trim();
+  const bg    = cs.getPropertyValue('--bg').trim();
+  const good  = cs.getPropertyValue('--good').trim();
+  const datasets = [{
+    label: t('dsCaMonth', year),
+    data,
+    backgroundColor: colors,
+    borderRadius: 4,
+    borderSkipped: false,
+    barPercentage: weeksN1 ? 0.45 : 0.62,
+    categoryPercentage: 0.8,
+  }];
+
+  if (weeksN1) {
+    const n1Totals = {};
+    for (const w of weeksN1) {
+      const m = w.start.getMonth();
+      n1Totals[m] = (n1Totals[m] || 0) + w.revenue;
+    }
+    const n1YearLocal = Math.min(...Object.keys(allData).map(Number));
+    datasets.push({
+      label: t('dsCaReal', n1YearLocal),
+      data: [0, ...sortedMonths.map(m => n1Totals[m] || 0)],
+      backgroundColor: [null, ...sortedMonths.map(m => hexToRgba(PALETTE[m % PALETTE.length], 0.35))],
+      borderColor: [null, ...sortedMonths.map(m => hexToRgba(PALETTE[m % PALETTE.length], 0.7))],
+      borderWidth: 1,
+      borderRadius: 4,
+      borderSkipped: false,
+      barPercentage: 0.45,
+      categoryPercentage: 0.8,
+    });
+  }
+
+  if (monthlyTarget) {
+    datasets.push({
+      label: t('dsMonthlyTarget'),
+      data: Array(labels.length).fill(monthlyTarget),
+      type: 'line',
+      borderColor: good,
+      borderWidth: 1.5,
+      borderDash: [8, 4],
+      backgroundColor: 'transparent',
+      fill: false,
+      tension: 0,
+      pointRadius: 0,
+      pointHoverRadius: 0,
+      order: 0,
+    });
+
+    if (lastObjectif > 0) {
+      let cumCA = 0;
+      const recalcData = sortedMonths.map((m) => {
+        cumCA += monthTotals[m] || 0;
+        const remaining = 11 - m;
+        if (remaining <= 0) return null;
+        return parseFloat(((lastObjectif - cumCA) / remaining).toFixed(2));
+      });
+      datasets.push({
+        label: t('dsRecalcMonthly'),
+        data: [monthlyTarget, ...recalcData],
+        type: 'line',
+        borderColor: '#ff9100',
+        borderWidth: 1.5,
+        borderDash: [4, 3],
+        backgroundColor: 'transparent',
+        fill: false,
+        tension: 0.2,
+        pointRadius: 3,
+        pointHoverRadius: 5,
+        order: 1,
+        spanGaps: false,
+      });
+    }
+  }
 
   chartMonth = new Chart(ctx, {
     type: 'bar',
-    data: {
-      labels,
-      datasets: [{
-        label: "CA mensuel",
-        data,
-        backgroundColor: colors,
-        borderRadius: 4,
-        borderSkipped: false,
-        barPercentage: 0.62,
-      }]
-    },
+    data: { labels, datasets },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: { display: false },
+        legend: { display: !!(weeksN1 || monthlyTarget), labels: { color: ink, font: { family: 'Inter', size: 12 }, boxWidth: 14, padding: 14 } },
         tooltip: {
-          backgroundColor: ink,
-          titleColor: '#f0ebdd',
-          bodyColor: '#f0ebdd',
-          padding: 12,
-          titleFont: { family: 'Fraunces', size: 14, weight: '500' },
-          bodyFont:  { family: 'Inter', size: 13 },
-          displayColors: false,
+          backgroundColor: ink, titleColor: bg, bodyColor: bg, padding: 12,
+          titleFont: { family: 'Fraunces', size: 14, weight: '500' }, bodyFont: { family: 'Inter', size: 13 },
+          displayColors: !!(weeksN1 || monthlyTarget),
           callbacks: {
             title: items => labels[items[0].dataIndex],
-            label: item => '  ' + fmtCurrency(item.parsed.y)
+            label: item => `  ${item.dataset.label} : ${fmtCurrency(item.parsed.y)}`
           }
         },
-        // Affiche la valeur au-dessus de chaque barre
         datalabels: false
       },
       scales: {
@@ -1931,7 +2944,7 @@ function drawMonthChart(year, weeks) {
           const value = data.datasets[0].data[i];
           if (!value) return;
           const label = fmtCurrency(value);
-          ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--ink').trim();
+          ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--ink').trim();
           ctx.font = '600 12px Inter, sans-serif';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'bottom';
@@ -1942,6 +2955,363 @@ function drawMonthChart(year, weeks) {
     }]
   });
 }
+
+// ── Objectif live update ──────────────────────────────────────
+const objectifInput = document.getElementById('objectifInput');
+if (objectifInput) {
+  objectifInput.addEventListener('input', () => {
+    if (!lastEnriched) return;
+    lastObjectif = Math.max(0, parseInt(objectifInput.value || '0', 10));
+    const n1 = getN1Enriched();
+    drawChart(lastEnriched, chartCmp['caChart'] ? n1 : null);
+    drawProjectionChart(lastEnriched, lastObjectif, lastYear, chartCmp['projectionChart'] ? n1 : null);
+    drawMonthChart(lastYear, lastEnriched, chartCmp['caMonthChart'] ? n1 : null);
+    renderMonthlyPerformance(lastEnriched, lastObjectif);
+  });
+}
+
+// ── Generic chart toggle ──────────────────────────────────────
+document.addEventListener('click', e => {
+  // Don't trigger if user clicked a button inside the actions area
+  if (e.target.closest('.chart-toggle-actions')) return;
+  const header = e.target.closest('.chart-toggle-header');
+  if (!header) return;
+  // Skip monthPerf and revenue headers (have their own handlers)
+  if (header.id === 'monthPerfHeaderBtn') return;
+  if (header.id === 'revenueToggleHeader') return;
+  if (header.id === 'daysToggleHeader') return;
+  const body    = header.nextElementSibling;
+  const chevron = header.querySelector('.chart-toggle-chevron');
+  if (!body || !body.classList.contains('chart-toggle-body')) return;
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  header.classList.toggle('open', !isOpen);
+  if (chevron) chevron.classList.toggle('open', !isOpen);
+});
+
+// ── Compare N-1 toggle ────────────────────────────────────────
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.cmp-btn');
+  if (!btn || !lastEnriched) return;
+  const chartId = btn.dataset.chart;
+  chartCmp[chartId] = !chartCmp[chartId];
+  btn.classList.toggle('active', chartCmp[chartId]);
+  const n1 = getN1Enriched();
+  // Redraw only the toggled chart
+  if (chartId === 'caChart')          drawChart(lastEnriched, chartCmp[chartId] ? n1 : null);
+  else if (chartId === 'projectionChart') drawProjectionChart(lastEnriched, lastObjectif, lastYear, chartCmp[chartId] ? n1 : null);
+  else if (chartId === 'internalChart')   drawInternalDaysChart(lastEnriched, chartCmp[chartId] ? n1 : null);
+  else if (chartId === 'billingRateChart') drawBillingRateChart(lastEnriched, billingRateMode, chartCmp[chartId] ? n1 : null);
+  else if (chartId === 'caMonthChart')    drawMonthChart(lastYear, lastEnriched, chartCmp[chartId] ? n1 : null);
+  else if (chartId === 'topClientsChart') drawTopClientsChart(lastEnriched, chartCmp[chartId] ? n1 : null);
+  else if (chartId === 'regieChart')      drawActivityDaysChart('regieChart', lastYear, lastEnriched, 'tjm', chartCmp[chartId] ? n1 : null);
+  else if (chartId === 'tmaChart')        drawActivityDaysChart('tmaChart',   lastYear, lastEnriched, 'tma', chartCmp[chartId] ? n1 : null);
+  else if (chartId === 'summaryDaysChart') drawSummaryDaysChart(lastYear, lastEnriched, chartCmp[chartId] ? n1 : null);
+});
+
+// ── Days block: open/close chevron ───────────────────────────
+document.addEventListener('click', e => {
+  if (e.target.closest('.chart-toggle-actions')) return;
+  const header = e.target.closest('#daysToggleHeader');
+  if (!header) return;
+  const body    = document.getElementById('daysToggleBody');
+  const chevron = document.getElementById('daysChevron');
+  if (!body) return;
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  header.classList.toggle('open', !isOpen);
+  if (chevron) chevron.classList.toggle('open', !isOpen);
+});
+
+// ── Days view toggle (summary / regie / tma) ─────────────────
+let daysView = 'summary';
+
+const DAYS_CHART_MAP = { summary: 'summaryDaysChart', regie: 'regieChart', tma: 'tmaChart' };
+const DAYS_TITLE_MAP = { summary: 'chartSummaryDays', regie: 'chartRegie', tma: 'chartTMA' };
+
+function syncDaysViewBtns() {
+  document.querySelectorAll('.days-view-btn').forEach(btn => {
+    const active = btn.dataset.view === daysView;
+    btn.classList.toggle('active', active);
+    btn.style.background  = active ? 'var(--accent)' : 'transparent';
+    btn.style.color       = active ? '#fff'          : 'var(--ink)';
+    btn.style.borderColor = active ? 'var(--accent)'  : 'var(--line)';
+  });
+  const titleEl = document.getElementById('daysTitleLabel');
+  if (titleEl) titleEl.textContent = t(DAYS_TITLE_MAP[daysView]);
+  const cmpBtn = document.getElementById('daysCmpBtn');
+  if (cmpBtn) cmpBtn.dataset.chart = DAYS_CHART_MAP[daysView];
+}
+
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.days-view-btn');
+  if (!btn) return;
+  const view = btn.dataset.view;
+  if (view === daysView) return;
+  daysView = view;
+  document.getElementById('daysSummaryWrap').style.display = view === 'summary' ? '' : 'none';
+  document.getElementById('daysRegieWrap').style.display   = view === 'regie'   ? '' : 'none';
+  document.getElementById('daysTmaWrap').style.display     = view === 'tma'     ? '' : 'none';
+  syncDaysViewBtns();
+  if (!lastEnriched) return;
+  const n1 = getN1Enriched();
+  if (view === 'summary') drawSummaryDaysChart(lastYear, lastEnriched, chartCmp['summaryDaysChart'] ? n1 : null);
+  else if (view === 'regie') drawActivityDaysChart('regieChart', lastYear, lastEnriched, 'tjm', chartCmp['regieChart'] ? n1 : null);
+  else if (view === 'tma')   drawActivityDaysChart('tmaChart',   lastYear, lastEnriched, 'tma', chartCmp['tmaChart']   ? n1 : null);
+});
+
+// ── Billing rate toggle ───────────────────────────────────────
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.billing-toggle');
+  if (!btn || !lastEnriched) return;
+  drawBillingRateChart(lastEnriched, btn.dataset.mode);
+});
+
+// ── Revenue block: open/close chevron ────────────────────────
+document.addEventListener('click', e => {
+  const header = e.target.closest('#revenueToggleHeader');
+  if (!header) return;
+  if (e.target.closest('.chart-toggle-actions')) return;
+  const body    = document.getElementById('revenueToggleBody');
+  const chevron = document.getElementById('revenueChevron');
+  if (!body) return;
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  header.classList.toggle('open', !isOpen);
+  if (chevron) chevron.classList.toggle('open', !isOpen);
+});
+
+// ── Revenue view toggle (month / week) ───────────────────────
+let revenueView = 'month';
+
+function syncRevenueViewBtns() {
+  document.querySelectorAll('.revenue-view-btn').forEach(btn => {
+    const active = btn.dataset.view === revenueView;
+    btn.classList.toggle('active', active);
+    btn.style.background  = active ? 'var(--accent)' : 'transparent';
+    btn.style.color       = active ? '#fff'          : 'var(--ink)';
+    btn.style.borderColor = active ? 'var(--accent)'  : 'var(--line)';
+  });
+  const titleEl = document.getElementById('revenueTitleLabel');
+  if (titleEl) titleEl.textContent = revenueView === 'month' ? t('chartMonth') : t('chartCA');
+  const cmpBtn = document.getElementById('revenueCmpBtn');
+  if (cmpBtn) cmpBtn.dataset.chart = revenueView === 'month' ? 'caMonthChart' : 'caChart';
+}
+
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.revenue-view-btn');
+  if (!btn) return;
+  const view = btn.dataset.view;
+  if (view === revenueView) return;
+  revenueView = view;
+  const monthWrap = document.getElementById('revenueMonthWrap');
+  const weekWrap  = document.getElementById('revenueWeekWrap');
+  if (monthWrap) monthWrap.style.display = view === 'month' ? '' : 'none';
+  if (weekWrap)  weekWrap.style.display  = view === 'week'  ? '' : 'none';
+  syncRevenueViewBtns();
+  if (!lastEnriched) return;
+  const n1 = getN1Enriched();
+  if (view === 'month') drawMonthChart(lastYear, lastEnriched, chartCmp['caMonthChart'] ? n1 : null);
+  else                  drawChart(lastEnriched, chartCmp['caChart'] ? n1 : null);
+});
+
+// ── Monthly Performance Table ─────────────────────────────────
+let perfMode = 'month'; // 'month' | 'week'
+
+function renderMonthlyPerformance(enriched, objectif, mode) {
+  if (mode) perfMode = mode;
+  const toggle   = document.getElementById('monthPerfToggle');
+  const thead    = document.getElementById('monthPerfHead');
+  const tbody    = document.getElementById('monthPerfBody');
+  const tfoot    = document.getElementById('monthPerfFoot');
+  const summary  = document.getElementById('monthPerfSummary');
+  if (!toggle || !tbody || !tfoot || !thead) return;
+
+  toggle.style.display = 'block';
+
+  // SVG ratio ring helper (22px)
+  function ratioRing(pct) {
+    const R = 9, C = Math.PI * 2 * R;
+    const capped = Math.min(pct, 100);
+    const dash   = (capped / 100) * C;
+    const color  = pct >= 100 ? 'var(--good)' : (pct >= 75 ? '#ff9100' : 'var(--accent-soft)');
+    return `<svg class="ratio-ring" width="22" height="22" viewBox="0 0 22 22">
+      <circle cx="11" cy="11" r="${R}" fill="none" stroke="var(--line)" stroke-width="2.5"/>
+      <circle cx="11" cy="11" r="${R}" fill="none" stroke="${color}" stroke-width="2.5"
+        stroke-dasharray="${dash.toFixed(2)} ${(C-dash).toFixed(2)}"
+        stroke-linecap="round" transform="rotate(-90 11 11)"
+        style="transition:stroke-dasharray .5s ease"/>
+    </svg>`;
+  }
+
+  function ratioCell(ca, target) {
+    if (!ca || !target) return `<span style="color:var(--ink-faint);font-size:12px">0%</span>`;
+    const pct = Math.round((ca / target) * 100);
+    return `<div style="display:flex;align-items:center;justify-content:center;gap:6px">${ratioRing(pct)}<span style="font-family:'Fraunces',serif;font-style:italic;font-size:13px;">${pct}%</span></div>`;
+  }
+
+  function badge(ca, target) {
+    if (!ca || !target) return '';
+    return (ca >= target)
+      ? `<span class="badge badge-success">${t('mpSuccess')}</span>`
+      : `<span class="badge badge-failed">${t('mpFailed')}</span>`;
+  }
+
+  let successCount = 0, failedCount = 0, totalCA = 0, ratioSum = 0, ratioCount = 0;
+  const now = new Date();
+  const dataYear = enriched[0]?.start?.getFullYear() || now.getFullYear();
+
+  // ── MONTH MODE ──────────────────────────────────────────────
+  if (perfMode === 'month') {
+    const monthlyTarget = objectif > 0 ? objectif / 12 : null;
+    const monthTotals   = {};
+    for (const w of enriched) {
+      const m = w.start.getMonth();
+      monthTotals[m] = (monthTotals[m] || 0) + w.revenue;
+    }
+    const currentMonth = (dataYear === now.getFullYear()) ? now.getMonth() : 11;
+    const MONTH_FULL_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+    const MONTH_FULL_EN = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const monthFull = currentLang === 'fr' ? MONTH_FULL_FR : MONTH_FULL_EN;
+
+    thead.innerHTML = `<tr>
+      <th>${t('thMpMonth')}</th>
+      <th class="right">${t('thMpCa')}</th>
+      <th class="right">${t('thMpTarget')}</th>
+      <th class="center">${t('thMpRatio')}</th>
+      <th class="center">${t('thMpStatus')}</th>
+    </tr>`;
+
+    const rows = Array.from({ length: 12 }, (_, m) => {
+      const ca       = monthTotals[m] || 0;
+      const hasCa    = ca > 0;
+      const isFuture = m > currentMonth && !hasCa;
+      if (hasCa) {
+        totalCA += ca;
+        if (monthlyTarget) {
+          const pct = Math.round((ca / monthlyTarget) * 100);
+          ratioSum += pct; ratioCount++;
+          if (ca >= monthlyTarget) successCount++; else failedCount++;
+        }
+      }
+      return `<tr class="${isFuture ? 'future' : ''}">
+        <td><div class="month-name-cell"><span class="month-icon">⊞</span>${monthFull[m]}</div></td>
+        <td class="right">${hasCa ? fmtCurrency(ca) : '—'}</td>
+        <td class="right">${monthlyTarget ? fmtCurrency(monthlyTarget) : '—'}</td>
+        <td class="center">${ratioCell(hasCa ? ca : 0, monthlyTarget)}</td>
+        <td class="center">${badge(hasCa ? ca : 0, monthlyTarget)}</td>
+      </tr>`;
+    });
+    tbody.innerHTML = rows.join('');
+
+  // ── WEEK MODE ───────────────────────────────────────────────
+  } else {
+    const weeklyTarget = objectif > 0 ? objectif / 52 : null;
+    const currentWeek  = enriched.length > 0 ? enriched[enriched.length - 1].week : 0;
+
+    thead.innerHTML = `<tr>
+      <th>${t('thMpWeek')}</th>
+      <th>${t('thMpPeriod')}</th>
+      <th class="right">${t('thMpCaWeek')}</th>
+      <th class="right">${t('thMpTargetWeek')}</th>
+      <th class="center">${t('thMpRatio')}</th>
+      <th class="center">${t('thMpStatus')}</th>
+    </tr>`;
+
+    const rows = enriched.map(w => {
+      const ca = w.revenue;
+      if (ca > 0) {
+        totalCA += ca;
+        if (weeklyTarget) {
+          const pct = Math.round((ca / weeklyTarget) * 100);
+          ratioSum += pct; ratioCount++;
+          if (ca >= weeklyTarget) successCount++; else failedCount++;
+        }
+      }
+      return `<tr>
+        <td><div class="month-name-cell"><span class="month-icon" style="font-family:'Fraunces',serif;font-style:italic;font-size:12px;font-weight:400;border:none;color:var(--accent);">S${w.week}</span></div></td>
+        <td style="color:var(--ink-muted);font-size:13px">${fmtRange(w.start, w.end)}</td>
+        <td class="right">${fmtCurrency(ca)}</td>
+        <td class="right">${weeklyTarget ? fmtCurrency(weeklyTarget) : '—'}</td>
+        <td class="center">${ratioCell(ca, weeklyTarget)}</td>
+        <td class="center">${badge(ca, weeklyTarget)}</td>
+      </tr>`;
+    });
+    tbody.innerHTML = rows.join('');
+  }
+
+  // ── Footer ──────────────────────────────────────────────────
+  const avgRatio   = ratioCount > 0 ? Math.round(ratioSum / ratioCount) : 0;
+  const colSpan    = perfMode === 'week' ? 6 : 5;
+  const blankCells = perfMode === 'week'
+    ? `<td class="right"></td><td class="center"><span class="foot-val">${ratioCount > 0 ? avgRatio + '%' : '—'}</span></td><td class="center"></td>`
+    : `<td class="right"></td><td class="center"><span class="foot-val">${ratioCount > 0 ? avgRatio + '%' : '—'}</span></td><td class="center"></td>`;
+
+  tfoot.innerHTML = `<tr>
+    <td>${t('mpSumLabel')}</td>
+    <td class="right"${perfMode === 'week' ? '' : ''}><span class="foot-val">${fmtCurrency(totalCA)}</span></td>
+    ${blankCells}
+  </tr>`;
+
+  // ── Header summary ──────────────────────────────────────────
+  if (summary) {
+    const hasData = successCount + failedCount > 0;
+    summary.innerHTML = hasData
+      ? `<span class="ok">${t('mpSuccessCount', successCount)}</span><span class="ko">${t('mpFailedCount', failedCount)}</span>`
+      : '';
+  }
+
+  // ── Sync mode buttons ────────────────────────────────────────
+  document.querySelectorAll('.perf-mode-btn').forEach(btn => {
+    const active = btn.dataset.mode === perfMode;
+    btn.classList.toggle('active', active);
+    btn.style.background  = active ? 'var(--accent)' : 'transparent';
+    btn.style.color       = active ? '#fff'          : 'var(--ink)';
+    btn.style.borderColor = active ? 'var(--accent)'  : 'var(--line)';
+  });
+}
+
+// ── Perf mode toggle ──────────────────────────────────────────
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.perf-mode-btn');
+  if (!btn || !lastEnriched) return;
+  renderMonthlyPerformance(lastEnriched, lastObjectif, btn.dataset.mode);
+});
+
+// ── Monthly performance toggle interaction ────────────────────
+document.addEventListener('click', e => {
+  // Ignore clicks on mode buttons inside the header
+  if (e.target.closest('.perf-mode-btn')) return;
+  const btn = e.target.closest('#monthPerfHeaderBtn');
+  if (!btn) return;
+  const body    = document.getElementById('monthPerfBodyWrap');
+  const chevron = document.getElementById('monthPerfChevron');
+  if (!body) return;
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  btn.classList.toggle('open', !isOpen);
+  if (chevron) chevron.classList.toggle('open', !isOpen);
+  btn.setAttribute('aria-expanded', String(!isOpen));
+});
+
+// ── Sort handlers ─────────────────────────────────────────────
+document.addEventListener('click', e => {
+  const th = e.target.closest('th.sortable');
+  if (!th) return;
+  const table = th.dataset.table;
+  const key   = th.dataset.key;
+  if (!table || !key) return;
+
+  if (table === 'weeks') {
+    weeksSort.dir = (weeksSort.key === key && weeksSort.dir === 'asc') ? 'desc' : 'asc';
+    weeksSort.key = key;
+    renderWeeksTable();
+  } else if (table === 'clients') {
+    clientsSort.dir = (clientsSort.key === key && clientsSort.dir === 'asc') ? 'desc' : 'asc';
+    clientsSort.key = key;
+    renderClientRates();
+  }
+});
 </script>
 
 </body>
